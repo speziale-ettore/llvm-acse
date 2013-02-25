@@ -111,6 +111,9 @@ dnl Configure project Makefiles.
 AC_CONFIG_MAKEFILE(Makefile)
 AC_CONFIG_MAKEFILE(Makefile.common)
 AC_CONFIG_MAKEFILE(lib/Makefile)
+AC_CONFIG_MAKEFILE(lib/Lex/Makefile)
+AC_CONFIG_MAKEFILE(tools/Makefile)
+AC_CONFIG_MAKEFILE(tools/acse-lex/Makefile)
 
 dnl This must be last.
 AC_OUTPUT
