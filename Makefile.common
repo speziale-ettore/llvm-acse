@@ -1,0 +1,6 @@
+
+# Include project configurations.
+include $(LEVEL)/Makefile.config
+
+# Include LLVM's master Makefile.
+include $(LLVM_SRC_ROOT)/Makefile.common
