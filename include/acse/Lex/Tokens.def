@@ -1,0 +1,59 @@
+//===- Tokens.def - LANCE Tokens --------------------------------*- C++ -*-===//
+//
+//                     The LLVM Compiler Infrastructure
+//
+// This file is distributed under the University of Illinois Open Source
+// License. See LICENSE.TXT for details.
+//
+//===----------------------------------------------------------------------===//
+
+// Braces and co.
+SIMPLE("{", LBrace)
+SIMPLE("}", RBrace)
+SIMPLE("[", LSquare)
+SIMPLE("]", RSquare)
+SIMPLE("(", LPar)
+SIMPLE(")", RPar)
+
+// Separators/terminators.
+SIMPLE(";", SemiColon)
+SIMPLE(":", Colon)
+SIMPLE("=", Assign)
+
+// Algebraic operators.
+SIMPLE("+", Add)
+SIMPLE("-", Sub)
+SIMPLE("*", Mul)
+SIMPLE("/", Div)
+SIMPLE("%", Mod)
+
+// Relational operators.
+SIMPLE("<", Less)
+SIMPLE("<=", LessOrEqual)
+SIMPLE("==", Equal)
+SIMPLE("!=", NotEqual)
+SIMPLE(">=", GreaterOrEqual)
+SIMPLE(">", Greater)
+
+// Bitwise operators.
+SIMPLE("&", BAnd)
+SIMPLE("|", BOr)
+SIMPLE("!", BNot)
+SIMPLE("<<", LShift)
+SIMPLE(">>", RShift)
+
+// Logical operators.
+SIMPLE("&&", LAnd)
+SIMPLE("||", LOr)
+
+// Keywords.
+KEYWORD("if", If)
+KEYWORD("else", Else)
+KEYWORD("do", Do)
+KEYWORD("while", While)
+KEYWORD("read", Read)
+KEYWORD("write", Write)
+
+// Typed.
+TYPED(Number)
+TYPED(Identifier)

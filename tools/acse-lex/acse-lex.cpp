@@ -21,8 +21,8 @@
 using namespace acse;
 
 static llvm::cl::opt<std::string>
-InputFileName("i",
-              llvm::cl::desc("Override input filename"),
+InputFileName(llvm::cl::Positional,
+              llvm::cl::desc("<input LANCE file>"),
               llvm::cl::init("-"),
               llvm::cl::value_desc("filename"));
 
@@ -31,6 +31,8 @@ OutputFileName("o",
                llvm::cl::desc("Override output filename"),
                llvm::cl::init("-"),
                llvm::cl::value_desc("filename"));
+
+static void WriteTokens(Lexer &Lex, llvm::raw_ostream &OS);
 
 int main(int argc, char *argv[]) {
   // Setup pretty stack trace printers.
@@ -66,7 +68,38 @@ int main(int argc, char *argv[]) {
 
   Lexer Lex(Srcs);
 
+  WriteTokens(Lex, Output->os());
+
   Output->keep();
 
   return EXIT_SUCCESS;
+}
+
+static void WriteTokens(Lexer &Lex, llvm::raw_ostream &OS) {
+  if(Lex.EndOfStream())
+    return;
+
+  const llvm::SourceMgr &Srcs = Lex.GetSources();
+  const Token *Cur = &Lex.Current();
+
+  unsigned OutLineNo = 1;
+  unsigned CurLineNo = 1;
+
+  OS << Cur->GetId();
+
+  for(Lex.Pop(); !Lex.EndOfStream(); Lex.Pop()) {
+    Cur = &Lex.Current();
+    CurLineNo = Srcs.FindLineNumber(Cur->GetLocation());
+
+    if(CurLineNo > OutLineNo) {
+      OS << "\n";
+      OutLineNo = CurLineNo;
+    } else {
+      OS << " ";
+    }
+
+    OS << Cur->GetId();
+  }
+
+  OS << "\n";
 }
