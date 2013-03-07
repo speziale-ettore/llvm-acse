@@ -40,6 +40,8 @@ all:: lit.site.cfg
 	@$(PYTHON) $(LLVM_SRC_ROOT)/utils/lit/lit.py \
 	 $(LIT_ARGS) $(TESTARGS) $(TESTDIRS)
 
+check-local:: all
+
 FORCE:
 
 lit.site.cfg: FORCE
