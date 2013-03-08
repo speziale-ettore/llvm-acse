@@ -70,6 +70,9 @@ int main(int argc, char *argv[]) {
 
   WriteTokens(Lex, Output->os());
 
+  if(!Lex.Success())
+    return EXIT_FAILURE;
+
   Output->keep();
 
   return EXIT_SUCCESS;

@@ -27,28 +27,187 @@ Lexer::Lexer(llvm::SourceMgr &Srcs) : Srcs(Srcs) {
   End = Src->getBufferEnd();
 }
 
+bool Lexer::ScanComment() {
+  ScanSpaces();
+
+  llvm::StringRef::iterator I = Start.begin(),
+                            J = I,
+                            E = Start.end();
+
+  // First char is not a '/'.
+  if(J == E || *J != '/')
+    return false;
+
+  // There is not a second char.
+  if(++J == E)
+    return false;
+
+  // Second char is a '/': the comment spans only one line.
+  if(*J == '/') {
+    bool InsideComment = true;
+
+    for(++J; J != E && InsideComment; ++J)
+      InsideComment = !IsNewLine(*J);
+
+    CachedTokens.push_back(new LineCommentTok(I, J));
+    Start = Start.drop_front(J - I);
+
+    return true;
+
+  // Second char is a '*': the comment spans multiple lines.
+  } else if(*J == '*') {
+    bool InsideComment = true;
+
+    for(++J; J != E && (J + 1) != E && InsideComment; ++J)
+      InsideComment = *J != '*' || *(J + 1) != '/';
+
+    if(InsideComment) {
+      ReportError(UnterminatedMultiLineComment);
+      return false;
+    }
+
+    // Add '1' because in the case of match, at the loop exit J points to '/'.
+    CachedTokens.push_back(new MultiLineCommentTok(I, J + 1));
+    Start = Start.drop_front(J + 1 - I);
+
+    return true;
+  }
+
+  return false;
+}
+
 bool Lexer::ScanSimple() {
   ScanSpaces();
 
-  // Will hold the token + its length.
-  llvm::StringRef Token;
+  llvm::StringRef::iterator I = Start.begin(),
+                            J = I,
+                            E = Start.end();
 
-  #define SIMPLE(R, C)                                                         \
-  {                                                                            \
-  if(Start.startswith(Token = R)) {                                            \
-    CachedTokens.push_back(new C ## Tok(Start, Start.begin() + Token.size())); \
-    Start = Start.drop_front(Token.size());                                    \
-    return true;                                                               \
-  }                                                                            \
+  // Nothing to scan.
+  if(J == E)
+    return false;
+
+  switch(*J) {
+  // Braces and co.
+  case '{':
+    CachedTokens.push_back(new LBraceTok(I, ++J));
+    break;
+  case '}':
+    CachedTokens.push_back(new RBraceTok(I, ++J));
+    break;
+  case '[':
+    CachedTokens.push_back(new LSquareTok(I, ++J));
+    break;
+  case ']':
+    CachedTokens.push_back(new RSquareTok(I, ++J));
+    break;
+  case '(':
+    CachedTokens.push_back(new LParTok(I, ++J));
+    break;
+  case ')':
+    CachedTokens.push_back(new RParTok(I, ++J));
+    break;
+
+  // Separators/terminators.
+  case ';':
+    CachedTokens.push_back(new SemiColonTok(I, ++J));
+    break;
+  case ':':
+    CachedTokens.push_back(new ColonTok(I, ++J));
+    break;
+  case ',':
+    CachedTokens.push_back(new CommaTok(I, ++J));
+    break;
+  // Check next char in order to check whether the token is Assign or Equal.
+  case '=':
+    if(++J == E || *J != '=')
+      CachedTokens.push_back(new AssignTok(I, J));
+    else // if(*J == '=' )
+      CachedTokens.push_back(new EqualTok(I, ++J));
+    break;
+
+  // Algebraic operators.
+  case '+':
+    CachedTokens.push_back(new AddTok(I, ++J));
+    break;
+  case '-':
+    CachedTokens.push_back(new SubTok(I, ++J));
+    break;
+  case '*':
+    CachedTokens.push_back(new MulTok(I, ++J));
+    break;
+  // Since the comment scanner is invoked before this scanner, there is no for
+  // the current character to be the prefix of a comment token.
+  case '/':
+    CachedTokens.push_back(new DivTok(I, ++J));
+    break;
+  case '%':
+    CachedTokens.push_back(new ModTok(I, ++J));
+    break;
+
+  // Relation operators.
+  //
+  // Could be the prefix of LessOrEqual or LShift.
+  case '<':
+    if(++J == E || (*J != '=' && *J != '<'))
+      CachedTokens.push_back(new LessTok(I, J));
+    else if(*J == '=')
+      CachedTokens.push_back(new LessOrEqualTok(I, ++J));
+    else // if(*J == '<')
+      CachedTokens.push_back(new LShiftTok(I, ++J));
+    break;
+  // Equal has been already handled.
+  //
+  // Could be a standalone bitwise not.
+  case '!':
+    if(++J == E || *J != '=')
+      CachedTokens.push_back(new BNotTok(I, J));
+    else // if(*J == '=')
+      CachedTokens.push_back(new NotEqualTok(I, ++J));
+    break;
+  // Could be the prefix of GreaterOrEqual or RShift.
+  case '>':
+    if(++J == E || (*J != '=' && *J != '>'))
+      CachedTokens.push_back(new GreaterTok(I, J));
+    else if(*J == '=')
+      CachedTokens.push_back(new GreaterOrEqualTok(I, ++J));
+    else // if(*J == '>')
+      CachedTokens.push_back(new RShiftTok(I, ++J));
+    break;
+
+  // Bitwise operators.
+  //
+  // Could be the prefix of LAnd.
+  case '&':
+    if(++J == E || *J != '&')
+      CachedTokens.push_back(new BAndTok(I, J));
+    else // if(*J == '&')
+      CachedTokens.push_back(new LAndTok(I, ++J));
+    break;
+  // Could be the prefix of LOr.
+  case '|':
+    if(++J == E || *J != '|')
+      CachedTokens.push_back(new BOrTok(I, J));
+    else // if(*J == '|')
+      CachedTokens.push_back(new LOrTok(I, ++J));
+    break;
+  // BNot already scanned.
+  // LShift already scanned.
+  // RShift already scanned.
+
+  // Logical operators.
+  //
+  // LAnd already scanned.
+  // LOR already scanned.
+
+  // Nothing to scan here.
+  default:
+    return false;
   }
-  #define KEYWORD(R, C)
-  #define TYPED(C)
-  #include "acse/Lex/Tokens.def"
-  #undef SIMPLE
-  #undef KEYWORD
-  #undef TYPED
 
-  return false;
+  Start = Start.drop_front(J - I);
+
+  return true;
 }
 
 bool Lexer::ScanNumber() {
@@ -113,17 +272,20 @@ bool Lexer::ScanIdentifier() {
 
   // Keywords are a special kind of identifiers: check if we have scanned one of
   // them an generate the corresponding representation.
-  #define SIMPLE(R, C)
-  #define KEYWORD(R, C)                                               \
+  #define TOKEN(R, C)                                               \
   if(Token == R) {                                                    \
     CachedTokens.push_back(new C ## Tok(Token.begin(), Token.end())); \
     return true;                                                      \
   }
-  #define TYPED(C)
-  #include "acse/Lex/Tokens.def"
-  #undef SIMPLE
-  #undef KEYWORD
-  #undef TYPED
+
+  TOKEN("if", If)
+  TOKEN("else", Else)
+  TOKEN("do", Do)
+  TOKEN("while", While)
+  TOKEN("read", Read)
+  TOKEN("write", Write)
+
+  #undef TOKEN
 
   // The scanned token was not a keyword: an identifier had been scanned.
   CachedTokens.push_back(new IdentifierTok(Token.begin(), Token.end()));
@@ -140,6 +302,7 @@ void Lexer::ReportError(ErrorTy Error) const {
     break;
   ERROR(ExpectedToken, "expected token");
   ERROR(MalformedNumber, "malformed number");
+  ERROR(UnterminatedMultiLineComment, "unterminated multi-line comment")
   #undef ERROR
 
   default:

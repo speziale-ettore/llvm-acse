@@ -23,7 +23,8 @@ public:
     NoError,
 
     ExpectedToken,
-    MalformedNumber
+    MalformedNumber,
+    UnterminatedMultiLineComment
   };
 
 public:
@@ -55,15 +56,21 @@ public:
     return CachedTokens.empty();
   }
 
+  bool Success() const {
+    return Start == End && CachedTokens.empty();
+  }
+
   const llvm::SourceMgr &GetSources() const {
     return Srcs;
   }
 
 private:
   void ScanToken() {
+    // Comments should be scanned first, in order to be greedy.
+    //
     // Keywords are modelled as special identifiers, so they are scanned
     // together with identifiers.
-    if(ScanSimple() || ScanNumber() || ScanIdentifier())
+    if(ScanComment() || ScanSimple() || ScanNumber() || ScanIdentifier())
       return;
 
     // Report error iff the end of the stream has not been reached.
@@ -71,6 +78,7 @@ private:
       ReportError(ExpectedToken);
   }
 
+  bool ScanComment();
   bool ScanSimple();
   bool ScanNumber();
   bool ScanIdentifier();
@@ -82,6 +90,20 @@ private:
       Start = llvm::StringRef(Start.data() + N);
     else
       Start = End;
+  }
+
+  bool IsNewLine(char C) const {
+    switch(C) {
+    case '\n': // Line feed.
+    case '\v': // Vertical tab.
+    case '\f': // Form feed.
+      return true;
+
+    default:
+      return false;
+    }
+
+    llvm_unreachable( "Not reachable" );
   }
 
   // We cannot use std::isalpha because it is LOCALE-sensitive, while LANCE it

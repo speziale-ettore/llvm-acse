@@ -14,25 +14,71 @@ using namespace acse;
 llvm::raw_ostream &acse::operator<<(llvm::raw_ostream &OS,
                                     Token::Id Identifier) {
   switch(Identifier) {
-  #define SIMPLE(R, C) \
-  case Token::C:       \
-    OS << # C;         \
+  #define TOKEN(I) \
+  case Token::I:   \
+    OS << # I;     \
     break;
-  #define KEYWORD(R, C) \
-  case Token::C:        \
-    OS << # C;          \
-    break;
-  #define TYPED(C) \
-  case Token::C:   \
-    OS << # C;     \
-    break;
-  #include "acse/Lex/Tokens.def"
-  #undef SIMPLE
-  #undef KEYWORD
-  #undef TYPED
+
+  // Comments.
+  TOKEN(LineComment)
+  TOKEN(MultiLineComment)
+
+  // Braces and co.
+  TOKEN(LBrace)
+  TOKEN(RBrace)
+  TOKEN(LSquare)
+  TOKEN(RSquare)
+  TOKEN(LPar)
+  TOKEN(RPar)
+
+  // Separators/terminators.
+  TOKEN(SemiColon)
+  TOKEN(Colon)
+  TOKEN(Comma)
+  TOKEN(Assign)
+
+  // Algebraic operators.
+  TOKEN(Add)
+  TOKEN(Sub)
+  TOKEN(Mul)
+  TOKEN(Div)
+  TOKEN(Mod)
+
+  // Relational operators.
+  TOKEN(Less)
+  TOKEN(LessOrEqual)
+  TOKEN(Equal)
+  TOKEN(NotEqual)
+  TOKEN(GreaterOrEqual)
+  TOKEN(Greater)
+
+  // Bitwise operators.
+  TOKEN(BAnd)
+  TOKEN(BOr)
+  TOKEN(BNot)
+  TOKEN(LShift)
+  TOKEN(RShift)
+
+  // Logical operators.
+  TOKEN(LAnd)
+  TOKEN(LOr)
+
+  // Keywords.
+  TOKEN(If)
+  TOKEN(Else)
+  TOKEN(Do)
+  TOKEN(While)
+  TOKEN(Read)
+  TOKEN(Write)
+
+  // Typed.
+  TOKEN(Number)
+  TOKEN(Identifier)
+
+  #undef TOKEN
 
   default:
-    OS << "TOKEN-" << static_cast<unsigned>(Identifier);
+    OS << "Token-" << static_cast<unsigned>(Identifier);
   }
 
   return OS;
