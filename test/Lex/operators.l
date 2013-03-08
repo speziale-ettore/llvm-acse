@@ -6,7 +6,7 @@
 // CHECK: Add Sub Mul Div Mod
 
 // Relational operators.
-< <= == >= >
+< <= == != >= >
 // CHECK: Less LessOrEqual Equal NotEqual GreaterOrEqual Greater
 
 // Bitwise operators.
