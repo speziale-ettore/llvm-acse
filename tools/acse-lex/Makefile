@@ -1,4 +1,4 @@
-##===- tools/acse-lex/Makefile  ----------------------------*- Makefile -*-===##
+##===- tools/acse-lex/Makefile -----------------------------*- Makefile -*-===##
 
 LEVEL = ../..
 
