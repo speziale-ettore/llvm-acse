@@ -17,6 +17,19 @@
 
 namespace acse {
 
+// The Lexer is the basic building block of every compiler front-end. Its duty
+// is to identify tokens in the input stream. Sometimes, it is said that "the
+// stream is tokenized by the lexer".
+//
+// Every lexer implements the following operations in order to access to the
+// token stream:
+//
+// - get the current token: this allows a client to understand the current
+//   position in the token stream
+// - consume current token: this allows a client to proceed analyzing the stream
+//
+// All other operations are needed to correctly manage the token stream, but the
+// core operations are the one reported above!
 class Lexer {
 public:
   enum ErrorTy {
