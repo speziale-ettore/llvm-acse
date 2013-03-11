@@ -22,8 +22,8 @@ At the time of writing, I am at Barcelona Supercomputing Center, waiting for a
 free slot on the cluster in order to run my tests. Since I have nothing to do, I
 started rewriting ACSE in order to exploit the LLVM compiler suite.
 
-Major differences with respect to original ACSE
------------------------------------------------
+Major differences with respect to the original ACSE
+---------------------------------------------------
 
 The language supported by this version of ACSE is the same of the original ACSE
 compiler, however there are four major differences inside the compiler itself:
