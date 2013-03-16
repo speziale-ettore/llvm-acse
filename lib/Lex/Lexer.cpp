@@ -18,7 +18,8 @@ using namespace acse;
 // Lexer implementation.
 //
 
-Lexer::Lexer(llvm::SourceMgr &Srcs) : Srcs(Srcs) {
+Lexer::Lexer(llvm::SourceMgr &Srcs) : Srcs(Srcs),
+                                      EatComments(false) {
   assert(Srcs.getNumBuffers() == 1 && "ACSE scanner works with only one file");
 
   const llvm::MemoryBuffer *Src = Srcs.getMemoryBuffer(0);
@@ -49,10 +50,12 @@ bool Lexer::ScanComment() {
     for(++J; J != E && InsideComment; ++J)
       InsideComment = !IsNewLine(*J);
 
-    CachedTokens.push_back(new LineCommentTok(I, J));
+    // Actually build the token only if comments should not be filtered.
+    if(!EatComments)
+      CachedTokens.push_back(new LineCommentTok(I, J));
     Start = Start.drop_front(J - I);
 
-    return true;
+    return !EatComments;
 
   // Second char is a '*': the comment spans multiple lines.
   } else if(*J == '*') {
@@ -67,10 +70,14 @@ bool Lexer::ScanComment() {
     }
 
     // Add '1' because in the case of match, at the loop exit J points to '/'.
-    CachedTokens.push_back(new MultiLineCommentTok(I, J + 1));
-    Start = Start.drop_front(J + 1 - I);
+    ++J;
 
-    return true;
+    // Actually build the token only if comments should not be filtered.
+    if(!EatComments)
+      CachedTokens.push_back(new MultiLineCommentTok(I, J));
+    Start = Start.drop_front(J - I);
+
+    return !EatComments;
   }
 
   return false;
@@ -300,9 +307,7 @@ void Lexer::ReportError(ErrorTy Error) const {
   case E: \
     Msg = M; \
     break;
-  ERROR(ExpectedToken, "expected token");
-  ERROR(MalformedNumber, "malformed number");
-  ERROR(UnterminatedMultiLineComment, "unterminated multi-line comment")
+  #include "acse/Lex/LexerError.def"
   #undef ERROR
 
   default:

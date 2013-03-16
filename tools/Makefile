@@ -8,6 +8,6 @@ LEVEL = ..
 #
 # List all of the subdirectories that we will compile.
 #
-DIRS = acse-lex
+DIRS = acse-lex acse-parse
 
 include $(LEVEL)/Makefile.common

@@ -148,6 +148,11 @@ protected:
 #define TOKEN_CLASS(I, S)                              \
 class I ## Tok : public S {                            \
 public:                                                \
+  static inline bool classof(const Token *Tok) {       \
+    return Tok->GetId() == I;                          \
+  }                                                    \
+                                                       \
+public:                                                \
   I ## Tok(llvm::StringRef Start, llvm::StringRef End) \
     : S(I, Start, End) { }                             \
 };
@@ -220,6 +225,11 @@ public:
   typedef uint32_t NumberTy;
 
 public:
+  static inline bool classof(const Token *Tok) {
+    return Tok->GetId() == Number;
+  }
+
+public:
   static const unsigned Radix = 10;
 
 public:
@@ -235,6 +245,11 @@ private:
 };
 
 class IdentifierTok : public Token {
+public:
+  static inline bool classof(const Token *Tok) {
+    return Tok->GetId() == Identifier;
+  }
+
 public:
   IdentifierTok(llvm::StringRef Start, llvm::StringRef End)
     : Token(Identifier, Start, End) { }
