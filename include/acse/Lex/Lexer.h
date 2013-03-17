@@ -49,6 +49,7 @@ public:
 public:
   Lexer(llvm::SourceMgr &Srcs);
 
+private:
   Lexer(const Lexer &That) LLVM_DELETED_FUNCTION;
   const Lexer &operator=(const Lexer &That) LLVM_DELETED_FUNCTION;
 

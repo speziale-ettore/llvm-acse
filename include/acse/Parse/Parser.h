@@ -80,6 +80,7 @@ public:
     Lex.SetEatComments();
   }
 
+private:
   Parser(const Parser &That) LLVM_DELETED_FUNCTION;
   const Parser &operator=(const Parser &That) LLVM_DELETED_FUNCTION;
 
