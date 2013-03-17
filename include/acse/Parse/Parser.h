@@ -13,8 +13,6 @@
 #include "acse/Lex/Lexer.h"
 #include "acse/Parse/AbstractSyntaxTree.h"
 
-#include "llvm/ADT/OwningPtr.h"
-
 namespace acse {
 
 // This class allows to extract an abstract syntax tree -- AST -- from a
@@ -89,8 +87,8 @@ public:
 
   bool Success() const { return !ErrorsFound; }
 
-  ProgramAST *GetAST() const { return AST.get(); }
-  ProgramAST *TakeAST() { return AST.take(); }
+  AbstractSyntaxTree *GetAST() const { return AST.get(); }
+  AbstractSyntaxTree *TakeAST() { return AST.take(); }
 
 private:
   VarDeclarationsAST *ParseVarDeclarations();
@@ -111,7 +109,7 @@ private:
   Lexer &Lex;
   bool ErrorsFound;
 
-  llvm::OwningPtr<ProgramAST> AST;
+  llvm::OwningPtr<AbstractSyntaxTree> AST;
 };
 
 } // End namespace acse.

@@ -12,6 +12,7 @@
 
 #include "acse/Lex/Token.h"
 
+#include "llvm/ADT/OwningPtr.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/Casting.h"
 
@@ -64,10 +65,10 @@ namespace acse {
 // actually an internal node, each pointer points to a different sub-tree. In
 // the case it is a leaf, only one pointer is used and it references to
 // corresponding token. Thus, getting the sub-trees of node is trivial.
-class AbstractSyntaxTree {
+class AbstractSyntaxTreeNode {
 public:
   // Every parsed entity is represented by a different subclass of
-  // AbstractSyntaxTree. Every entity X is represented by class XAST.
+  // AbstractSyntaxTreeNode. Every entity X is represented by class XAST.
   enum Id {
     // Special ASTs.
     Empty,
@@ -145,7 +146,7 @@ public:
 
 private:
   union NodeDataPtr {
-    AbstractSyntaxTree *AST;
+    AbstractSyntaxTreeNode *AST;
     Token *Tok;
   };
 
@@ -211,13 +212,13 @@ public:
   private:
     IterTy Cur;
 
-    friend class AbstractSyntaxTree;
+    friend class AbstractSyntaxTreeNode;
   };
 
-  typedef subtree_iterator_base<AbstractSyntaxTree,
+  typedef subtree_iterator_base<AbstractSyntaxTreeNode,
                                 NodeData::iterator>
           subtree_iterator;
-  typedef subtree_iterator_base<const AbstractSyntaxTree,
+  typedef subtree_iterator_base<const AbstractSyntaxTreeNode,
                                 NodeData::const_iterator>
           const_subtree_iterator;
 
@@ -235,19 +236,19 @@ protected:
   //
   // For instance, suppose a subclass invokes this constructor in this way:
   //
-  // AbstractSyntaxTree(T0, 0)
+  // AbstractSyntaxTreeNode(T0, 0)
   //
   // This simply means that the subclass represents a node with only one
   // sub-tree. From the implementation point of view, the following call is
   // equivalent:
   //
-  // AbstractSyntaxTree(0, T0)
+  // AbstractSyntaxTreeNode(0, T0)
   //
   // However, it is discouraged -- it is not very clear!
-  AbstractSyntaxTree(Id Identifier,
-                     AbstractSyntaxTree *T0 = 0,
-                     AbstractSyntaxTree *T1 = 0,
-                     AbstractSyntaxTree *T2 = 0)
+  AbstractSyntaxTreeNode(Id Identifier,
+                         AbstractSyntaxTreeNode *T0 = 0,
+                         AbstractSyntaxTreeNode *T1 = 0,
+                         AbstractSyntaxTreeNode *T2 = 0)
     : MyIdentifier(Identifier) {
     NodeDataPtr Ptr;
 
@@ -265,7 +266,7 @@ protected:
   }
 
   // This constructor should be used to create leaf nodes.
-  AbstractSyntaxTree(Id Identifier, Token *T) : MyIdentifier(Identifier) {
+  AbstractSyntaxTreeNode(Id Identifier, Token *T) : MyIdentifier(Identifier) {
     NodeDataPtr Ptr;
 
     Ptr.Tok = T;
@@ -273,22 +274,19 @@ protected:
   }
 
 private:
-  AbstractSyntaxTree(const AbstractSyntaxTree &That)
+  AbstractSyntaxTreeNode(const AbstractSyntaxTreeNode &That)
     LLVM_DELETED_FUNCTION;
-  const AbstractSyntaxTree &operator=(const AbstractSyntaxTree &That)
+  const AbstractSyntaxTreeNode &operator=(const AbstractSyntaxTreeNode &That)
     LLVM_DELETED_FUNCTION;
 
 public:
-  ~AbstractSyntaxTree();
+  ~AbstractSyntaxTreeNode();
 
 public:
   Id GetId() const { return MyIdentifier; }
 
   llvm::SMLoc GetStartLoc() const;
   llvm::SMLoc GetEndLoc() const;
-
-public:
-  void Dump(llvm::raw_ostream &OS = llvm::errs()) const;
 
 protected:
   // This field should be protected because subclasses should access to their
@@ -304,28 +302,29 @@ private:
   llvm::SMLoc EndLoc;
 };
 
-class TokenAST : public AbstractSyntaxTree {
+class TokenAST : public AbstractSyntaxTreeNode {
 public:
-  static inline bool classof(const AbstractSyntaxTree *AST) {
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return MinTokenId <= AST->GetId() && AST->GetId() <= MaxTokenId;
   }
 
 protected:
-  TokenAST(Id Identifier, Token *Tok) : AbstractSyntaxTree(Identifier, Tok) { }
+  TokenAST(Id Identifier, Token *Tok)
+    : AbstractSyntaxTreeNode(Identifier, Tok) { }
 };
 
 // We would like to represents all tokens inside the AST, so it is necessary
 // generates a different class for each of them: this macro generates a very
 // trivial class for a given token identifier.
 #define TOKEN_AST(I) \
-class I ## AST : public TokenAST {                            \
-public:                                                       \
-  static inline bool classof(const AbstractSyntaxTree *AST) { \
-    return AST->GetId() == I;                                 \
-  }                                                           \
-                                                              \
-public:                                                       \
-  I ## AST(I ## Tok *Tok) : TokenAST(I, Tok) { }              \
+class I ## AST : public TokenAST {                                \
+public:                                                           \
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) { \
+    return AST->GetId() == I;                                     \
+  }                                                               \
+                                                                  \
+public:                                                           \
+  I ## AST(I ## Tok *Tok) : TokenAST(I, Tok) { }                  \
 };
 
 // From a design point of view, it would be better to define classes from the
@@ -364,14 +363,14 @@ public:                                                       \
 //
 
 // Empty expansion of a non-terminal rule.
-class EmptyAST : public AbstractSyntaxTree {
+class EmptyAST : public AbstractSyntaxTreeNode {
 public:
-  static inline bool classof(const AbstractSyntaxTree *AST) {
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == Empty;
   }
 
 public:
-  EmptyAST() : AbstractSyntaxTree(Empty) { }
+  EmptyAST() : AbstractSyntaxTreeNode(Empty) { }
 };
 
 //
@@ -391,7 +390,7 @@ TOKEN_AST(Assign)
 
 class NumberAST : public TokenAST {
 public:
-  static inline bool classof(const AbstractSyntaxTree *AST) {
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == Number;
   }
 
@@ -401,7 +400,7 @@ public:
 
 class IdentifierAST : public TokenAST {
 public:
-  static inline bool classof(const AbstractSyntaxTree *AST) {
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == Identifier;
   }
 
@@ -413,59 +412,59 @@ public:
 // Non-terminal rule ASTs.
 //
 
-class StatementsAST : public AbstractSyntaxTree { };
+class StatementsAST : public AbstractSyntaxTreeNode { };
 
-class InitializerAST : public AbstractSyntaxTree {
+class InitializerAST : public AbstractSyntaxTreeNode {
 public:
-  static inline bool classof(AbstractSyntaxTree *AST) {
+  static inline bool classof(AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == Initializer;
   }
 
 public:
-  InitializerAST(NumberAST *N) : AbstractSyntaxTree(Number, N) { }
+  InitializerAST(NumberAST *N) : AbstractSyntaxTreeNode(Number, N) { }
 };
 
-class ArrayDeclarationAST : public AbstractSyntaxTree { };
+class ArrayDeclarationAST : public AbstractSyntaxTreeNode { };
 
 // scalar_declaration: *Identifier*
 //                   | *Identifier* *Assign* initializer
-class ScalarDeclarationAST : public AbstractSyntaxTree {
+class ScalarDeclarationAST : public AbstractSyntaxTreeNode {
 public:
-  static inline bool classof(AbstractSyntaxTree *AST) {
+  static inline bool classof(AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == ScalarDeclaration;
   }
 
 public:
   ScalarDeclarationAST(IdentifierAST *Id)
-    : AbstractSyntaxTree(ScalarDeclaration, Id) { }
+    : AbstractSyntaxTreeNode(ScalarDeclaration, Id) { }
 
   ScalarDeclarationAST(IdentifierAST *Id,
                        AssignAST *Assign,
                        InitializerAST *Init)
-    : AbstractSyntaxTree(ScalarDeclaration, Id, Assign, Init) { }
+    : AbstractSyntaxTreeNode(ScalarDeclaration, Id, Assign, Init) { }
 };
 
 // declaration: scalar_declaration
 //            | array_declaration
-class DeclarationAST : public AbstractSyntaxTree {
+class DeclarationAST : public AbstractSyntaxTreeNode {
 public:
-  static inline bool classof(AbstractSyntaxTree *AST) {
+  static inline bool classof(AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == Declaration;
   }
 
 public:
   DeclarationAST(ScalarDeclarationAST *Decl)
-    : AbstractSyntaxTree(Declaration, Decl) { }
+    : AbstractSyntaxTreeNode(Declaration, Decl) { }
 
   DeclarationAST(ArrayDeclarationAST *Decl)
-    : AbstractSyntaxTree(Declaration, Decl) { }
+    : AbstractSyntaxTreeNode(Declaration, Decl) { }
 };
 
 // declaration_list: declaration *Comma* declaration_list
 //                 | declaration
-class DeclarationListAST : public AbstractSyntaxTree {
+class DeclarationListAST : public AbstractSyntaxTreeNode {
 public:
-  static inline bool classof(AbstractSyntaxTree *AST) {
+  static inline bool classof(AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == DeclarationList;
   }
 
@@ -473,13 +472,13 @@ public:
   DeclarationListAST(DeclarationAST *Decl,
                      CommaAST *Comma,
                      DeclarationListAST *DeclList)
-    : AbstractSyntaxTree(DeclarationList, Decl, Comma, DeclList) { }
+    : AbstractSyntaxTreeNode(DeclarationList, Decl, Comma, DeclList) { }
 };
 
 // var_declaration: *Identifier* declaration_list *SemiColon*
-class VarDeclarationAST : public AbstractSyntaxTree {
+class VarDeclarationAST : public AbstractSyntaxTreeNode {
 public:
-  static inline bool classof(const AbstractSyntaxTree *AST) {
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == VarDeclaration;
   }
 
@@ -487,62 +486,91 @@ public:
   VarDeclarationAST(IdentifierAST *Id,
                     DeclarationListAST *DeclList,
                     SemiColonAST *Semi)
-    : AbstractSyntaxTree(VarDeclaration, Id, DeclList, Semi) { }
+    : AbstractSyntaxTreeNode(VarDeclaration, Id, DeclList, Semi) { }
 };
 
 // non_empty_var_declarations: var_declaration non_empty_var_declarations
 //                           | var_declaration
-class NonEmptyVarDeclarationsAST : public AbstractSyntaxTree {
+class NonEmptyVarDeclarationsAST : public AbstractSyntaxTreeNode {
 public:
-  static inline bool classof(const AbstractSyntaxTree *AST) {
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == NonEmptyVarDeclarations;
   }
 
 public:
   NonEmptyVarDeclarationsAST(VarDeclarationAST *VarDecl,
                              NonEmptyVarDeclarationsAST *VarDecls = 0)
-    : AbstractSyntaxTree(NonEmptyVarDeclarations, VarDecl, VarDecls) { }
+    : AbstractSyntaxTreeNode(NonEmptyVarDeclarations, VarDecl, VarDecls) { }
 };
 
 // var_declarations: non_empty_var_declarations
 //                 | empty
-class VarDeclarationsAST : public AbstractSyntaxTree {
+class VarDeclarationsAST : public AbstractSyntaxTreeNode {
 public:
-  static inline bool classof(const AbstractSyntaxTree *AST) {
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == VarDeclarations;
   }
 
 public:
   VarDeclarationsAST(NonEmptyVarDeclarationsAST *VarDecls)
-    : AbstractSyntaxTree(VarDeclarations, VarDecls) { }
+    : AbstractSyntaxTreeNode(VarDeclarations, VarDecls) { }
 
   VarDeclarationsAST(EmptyAST *Eps)
-    : AbstractSyntaxTree(VarDeclarations, Eps) { }
+    : AbstractSyntaxTreeNode(VarDeclarations, Eps) { }
 };
 
 // program: var_declarations statements
-class ProgramAST : public AbstractSyntaxTree {
+class ProgramAST : public AbstractSyntaxTreeNode {
 public:
-  static inline bool classof(const AbstractSyntaxTree *AST) {
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == Program;
   }
 
 public:
   ProgramAST(VarDeclarationsAST *VarDecls, StatementsAST *Stmts)
-    : AbstractSyntaxTree(Program, VarDecls, Stmts) { }
+    : AbstractSyntaxTreeNode(Program, VarDecls, Stmts) { }
+};
+
+// A common practice in C++ data structures design is to divide the
+// implementation of the core data structure from the interface exposed to the
+// user. In the context of the AST, the class AbstractSyntaxTreeNode implements
+// the core structure of the tree, while AbstractSyntaxTree is the interface.
+//
+// This enable to put inside AbstractSyntaxTreeNode only data and member
+// functions needed to build a working tree. High-level accessors methods, such
+// as printing or viewing the AST are implemented inside AbstractSyntaxTree.
+//
+// In more sophisticated designs, this is also a good place where implement
+// high-level queries about the tree contents and structure, and possibly
+// caching their results.
+class AbstractSyntaxTree {
+public:
+  AbstractSyntaxTree(ProgramAST *Root) : Root(Root) { }
+
+private:
+  AbstractSyntaxTree(const AbstractSyntaxTree &That)
+    LLVM_DELETED_FUNCTION;
+  const AbstractSyntaxTree &operator=(const AbstractSyntaxTree &That)
+    LLVM_DELETED_FUNCTION;
+
+public:
+  void Dump(llvm::raw_ostream &OS = llvm::errs()) const;
+
+private:
+  llvm::OwningPtr<ProgramAST> Root;
 };
 
 //
 // Inline methods that cannot be implemented at declaration time.
 //
 
-inline AbstractSyntaxTree::subtree_iterator
-AbstractSyntaxTree::subtree_begin() {
+inline AbstractSyntaxTreeNode::subtree_iterator
+AbstractSyntaxTreeNode::subtree_begin() {
   return subtree_iterator(Data.begin());
 }
 
-inline AbstractSyntaxTree::subtree_iterator
-AbstractSyntaxTree::subtree_end() {
+inline AbstractSyntaxTreeNode::subtree_iterator
+AbstractSyntaxTreeNode::subtree_end() {
   // Leaf node: it has not any sub-tree, but since the same space used to hold
   // subtree pointers is also used to hold the payload of the leaf, we have to
   // adjust the end of the sub-tree sequence.
@@ -554,13 +582,13 @@ AbstractSyntaxTree::subtree_end() {
     return subtree_iterator(Data.end());
 }
 
-inline AbstractSyntaxTree::const_subtree_iterator
-AbstractSyntaxTree::subtree_begin() const {
+inline AbstractSyntaxTreeNode::const_subtree_iterator
+AbstractSyntaxTreeNode::subtree_begin() const {
   return const_subtree_iterator(Data.begin());
 }
 
-inline AbstractSyntaxTree::const_subtree_iterator
-AbstractSyntaxTree::subtree_end() const {
+inline AbstractSyntaxTreeNode::const_subtree_iterator
+AbstractSyntaxTreeNode::subtree_end() const {
   // Leaf node: it has not any sub-tree, but since the same space used to hold
   // subtree pointers is also used to hold the payload of the leaf, we have to
   // adjust the end of the sub-tree sequence.
@@ -573,7 +601,7 @@ AbstractSyntaxTree::subtree_end() const {
 }
 
 // TODO: switch to an iterative algorithm.
-inline AbstractSyntaxTree::~AbstractSyntaxTree() {
+inline AbstractSyntaxTreeNode::~AbstractSyntaxTreeNode() {
   NodeData::iterator I = Data.begin();
 
   // This class provides the storage for all subclasses, thus it is the only

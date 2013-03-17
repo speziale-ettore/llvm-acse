@@ -11,14 +11,22 @@
 
 using namespace acse;
 
+//
+// AbstractSyntaxTreeNode implementation.
+//
+
 // TODO: compute the start/end locations by composing subtree locations.
-llvm::SMLoc AbstractSyntaxTree::GetStartLoc() const {
+llvm::SMLoc AbstractSyntaxTreeNode::GetStartLoc() const {
   return StartLoc;
 }
 
 // TODO: compute the start/end locations by composing subtree locations.
-llvm::SMLoc AbstractSyntaxTree::GetEndLoc() const {
+llvm::SMLoc AbstractSyntaxTreeNode::GetEndLoc() const {
   return EndLoc;
 }
+
+//
+// AbstractSyntaxTree implementation.
+//
 
 void AbstractSyntaxTree::Dump(llvm::raw_ostream &OS) const { }

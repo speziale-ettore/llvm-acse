@@ -26,8 +26,10 @@ bool Parser::Run() {
   // Check if there is something left to parse in the stream.
   ErrorsFound = ErrorsFound && Lex.Success();
  
-  if(!ErrorsFound)
-    AST.reset(new ProgramAST(VarDecls.take(), Stmts.take()));
+  if(!ErrorsFound) {
+    ProgramAST *Prog = new ProgramAST(VarDecls.take(), Stmts.take());
+    AST.reset(new AbstractSyntaxTree(Prog));
+  }
 
   return Success();
 }
