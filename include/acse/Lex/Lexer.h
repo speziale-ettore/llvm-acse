@@ -149,11 +149,18 @@ public:
 
 private:
   bool ScanToken() {
-    // Comments should be scanned first, in order to be greedy.
-    //
-    // Keywords are modelled as special identifiers, so they are scanned
-    // together with identifiers.
-    if(ScanComment() || ScanSimple() || ScanNumber() || ScanIdentifier())
+    // Try scan a comment. If it should not be ignored, then it acts like an
+    // ordinary token, hence we have scanned something.
+    if(ScanComment() && !EatComments)
+      return true;
+
+    // Try eating the next comments, if requested.
+    while(EatComments && ScanComment())
+      ;
+
+    // Now, we can start scanning. Keywords are modelled as special identifiers,
+    // so they are scanned together with identifiers.
+    if(ScanSimple() || ScanNumber() || ScanIdentifier())
       return true;
 
     // Report error iff the end of the stream has not been reached.
@@ -172,7 +179,7 @@ private:
     llvm::StringRef::size_type N = Start.find_first_not_of("\t\n\v\f\r ");
 
     if(N != llvm::StringRef::npos)
-      Start = llvm::StringRef(Start.data() + N);
+      Start = Start.drop_front(N);
     else
       Start = End;
   }

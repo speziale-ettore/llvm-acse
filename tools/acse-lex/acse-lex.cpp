@@ -32,6 +32,11 @@ OutputFileName("o",
                llvm::cl::init("-"),
                llvm::cl::value_desc("filename"));
 
+static llvm::cl::opt<bool>
+EatComments("eat-comments",
+            llvm::cl::desc("Drops comment tokens"),
+            llvm::cl::init(false));
+
 static void WriteTokens(Lexer &Lex, llvm::raw_ostream &OS);
 
 int main(int argc, char *argv[]) {
@@ -68,6 +73,8 @@ int main(int argc, char *argv[]) {
 
   Lexer Lex(Srcs);
 
+  Lex.SetEatComments(EatComments);
+
   WriteTokens(Lex, Output->os());
 
   if(!Lex.Success())
@@ -85,8 +92,8 @@ static void WriteTokens(Lexer &Lex, llvm::raw_ostream &OS) {
   const llvm::SourceMgr &Srcs = Lex.GetSources();
   const Token *Cur = &Lex.Current();
 
-  unsigned OutLineNo = 1;
-  unsigned CurLineNo = 1;
+  unsigned OutLineNo = Srcs.FindLineNumber(Cur->GetLocation()),
+           CurLineNo;
 
   OS << Cur->GetId();
 

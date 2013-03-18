@@ -55,7 +55,7 @@ bool Lexer::ScanComment() {
       CachedTokens.push_back(new LineCommentTok(I, J));
     Start = Start.drop_front(J - I);
 
-    return !EatComments;
+    return true;
 
   // Second char is a '*': the comment spans multiple lines.
   } else if(*J == '*') {
@@ -77,7 +77,7 @@ bool Lexer::ScanComment() {
       CachedTokens.push_back(new MultiLineCommentTok(I, J));
     Start = Start.drop_front(J - I);
 
-    return !EatComments;
+    return true;
   }
 
   return false;
