@@ -12,6 +12,8 @@
 
 #include "acse/Lex/Token.h"
 
+#include "llvm/ADT/DepthFirstIterator.h"
+#include "llvm/ADT/GraphTraits.h"
 #include "llvm/ADT/OwningPtr.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/Casting.h"
@@ -153,81 +155,148 @@ private:
   typedef llvm::SmallVector<NodeDataPtr, 4> NodeData;
 
 public:
-  template <typename Ty, typename IterTy>
-  class subtree_iterator_base
-    : public std::iterator<std::bidirectional_iterator_tag, Ty> {
+  // This iterator allows to access all sub-trees referenced by a node. Since in
+  // our design, each AbstractSyntaxTreeNode can reference either a set of
+  // AbstractSyntaxTreeNode or an Token, this iterator is in charge of
+  // automatically access to the right object -- i.e. AbstractSyntaxTreeNode --
+  // when dereferenced.
+  //
+  // Please notice that I have tried doing some black magic with inheritance and
+  // templates, but I failed defining a base class for both iterator and
+  // constant iterator -- it looks like that writing two separate classes was
+  // the only viable solution.
+  class iterator {
   public:
-    subtree_iterator_base() { }
+    typedef AbstractSyntaxTreeNode *value_type;
+    typedef ptrdiff_t difference_type;
 
-    subtree_iterator_base(const subtree_iterator_base &That) : Cur(That.Cur) { }
+    typedef value_type *pointer;
+    typedef value_type &reference;
 
-    const subtree_iterator_base &operator=(const subtree_iterator_base &That) {
-      return Cur = That.Cur;
+    typedef std::forward_iterator_tag iterator_category;
+
+  public:
+    iterator() { }
+    iterator(const iterator &That) : Cur(That.Cur) { }
+
+    const iterator &operator=(const iterator &That) {
+      if(this != &That)
+        Cur = That.Cur;
+      return *this;
     }
 
   private:
-    subtree_iterator_base(const IterTy &I) : Cur(I) { }
+    iterator(const NodeData::iterator &I) : Cur(I) { }
 
   public:
-    bool operator==(const subtree_iterator_base &That) const {
-      return Cur == That.Cur;
-    }
-
-    bool operator!=(const subtree_iterator_base &That) const {
-      return Cur != That.Cur;
-    }
+    bool operator==(const iterator &That) const { return Cur == That.Cur; }
+    bool operator!=(const iterator &That) const { return Cur != That.Cur; }
 
   public:
-    subtree_iterator_base &operator++() {
+    iterator &operator++() {
       ++Cur;
       return *this;
     }
 
-    subtree_iterator_base operator++(int Ign) {
-      subtree_iterator Old = *this;
+    iterator operator++(int Ign) {
+      iterator Prev = *this;
       ++*this;
-      return *Old;
-    }
-
-    subtree_iterator_base &operator--() {
-      --Cur;
-      return *this;
-    }
-
-    subtree_iterator_base operator--(int Ign) {
-      subtree_iterator Old = *this;
-      --*this;
-      return Old;
+      return Prev;
     }
 
   public:
-    Ty &operator*() const {
-      return *Cur->AST;
+    reference operator*() const { return Cur->AST; }
+    pointer operator->() const { return &Cur->AST; }
+
+  private:
+    NodeData::iterator Cur;
+
+    friend class AbstractSyntaxTreeNode;
+
+    // Since a const_iterator can be copy-constructed from an iterator, we must
+    // grant him access to private fields in order to perform its
+    // initialization.
+    friend class const_iterator;
+  };
+
+  // A const_iterator behaves almost exactly as an iterator, but with 3 major
+  // differences:
+  //
+  // 1) it does not allow modifying returned elements
+  // 2) it cannot be used for modifying the associated container -- e.g. it
+  //    cannot be used as are reference point for and insert operation
+  // 3) it can be copy-constructed from an iterator of the same class
+  //
+  // Sometimes it is possible exploiting inheritance and/or templates in order
+  // to factorize as much as possible code for both iterator and const_iterator.
+  // I tried, but I failed writing a concise generic description for iterators
+  // of this class.
+  class const_iterator {
+  public:
+    typedef const AbstractSyntaxTreeNode *value_type;
+    typedef ptrdiff_t difference_type;
+
+    typedef value_type *pointer;
+    typedef value_type &reference;
+
+    typedef std::forward_iterator_tag iterator_category;
+
+  public:
+    const_iterator() { }
+    const_iterator(const iterator &That) : Cur(That.Cur) { }
+    const_iterator(const const_iterator &That) : Cur(That.Cur) { }
+
+    const const_iterator &operator=(const iterator &That) {
+      Cur = That.Cur;
+      return *this;
     }
 
-    Ty *operator->() const {
-      return Cur->AST;
+    const const_iterator &operator=(const const_iterator &That) {
+      if(this != &That)
+        Cur = That.Cur;
+      return *this;
     }
 
   private:
-    IterTy Cur;
+    const_iterator(const NodeData::const_iterator &I) : Cur(I) { }
+
+  public:
+    bool operator==(const const_iterator &That) const {
+      return Cur == That.Cur;
+    }
+
+    bool operator!=(const const_iterator &That) const {
+      return Cur != That.Cur;
+    }
+
+  public:
+    const_iterator &operator++() {
+      ++Cur;
+      return *this;
+    }
+
+    const_iterator operator++(int Ign) {
+      const_iterator Prev = *this;
+      ++*this;
+      return Prev;
+    }
+
+  public:
+    reference operator*() const { return const_cast<reference>(Cur->AST); }
+    pointer operator->() const { return const_cast<pointer>(&Cur->AST); }
+
+  private:
+    NodeData::const_iterator Cur;
 
     friend class AbstractSyntaxTreeNode;
   };
 
-  typedef subtree_iterator_base<AbstractSyntaxTreeNode,
-                                NodeData::iterator>
-          subtree_iterator;
-  typedef subtree_iterator_base<const AbstractSyntaxTreeNode,
-                                NodeData::const_iterator>
-          const_subtree_iterator;
-
 public:
-  subtree_iterator subtree_begin();
-  subtree_iterator subtree_end();
+  iterator begin();
+  iterator end();
 
-  const_subtree_iterator subtree_begin() const;
-  const_subtree_iterator subtree_end() const;
+  const_iterator begin() const;
+  const_iterator end() const;
 
 protected:
   // This constructor insert all non-null input trees inside the current tree.
@@ -301,6 +370,9 @@ private:
   llvm::SMLoc StartLoc;
   llvm::SMLoc EndLoc;
 };
+
+llvm::raw_ostream &operator<<(llvm::raw_ostream &OS,
+                              AbstractSyntaxTreeNode::Id Id);
 
 class TokenAST : public AbstractSyntaxTreeNode {
 public:
@@ -531,73 +603,42 @@ public:
     : AbstractSyntaxTreeNode(Program, VarDecls, Stmts) { }
 };
 
-// A common practice in C++ data structures design is to divide the
-// implementation of the core data structure from the interface exposed to the
-// user. In the context of the AST, the class AbstractSyntaxTreeNode implements
-// the core structure of the tree, while AbstractSyntaxTree is the interface.
-//
-// This enable to put inside AbstractSyntaxTreeNode only data and member
-// functions needed to build a working tree. High-level accessors methods, such
-// as printing or viewing the AST are implemented inside AbstractSyntaxTree.
-//
-// In more sophisticated designs, this is also a good place where implement
-// high-level queries about the tree contents and structure, and possibly
-// caching their results.
-class AbstractSyntaxTree {
-public:
-  AbstractSyntaxTree(ProgramAST *Root) : Root(Root) { }
-
-private:
-  AbstractSyntaxTree(const AbstractSyntaxTree &That)
-    LLVM_DELETED_FUNCTION;
-  const AbstractSyntaxTree &operator=(const AbstractSyntaxTree &That)
-    LLVM_DELETED_FUNCTION;
-
-public:
-  void Dump(llvm::raw_ostream &OS = llvm::errs()) const;
-
-private:
-  llvm::OwningPtr<ProgramAST> Root;
-};
-
 //
 // Inline methods that cannot be implemented at declaration time.
 //
 
-inline AbstractSyntaxTreeNode::subtree_iterator
-AbstractSyntaxTreeNode::subtree_begin() {
-  return subtree_iterator(Data.begin());
+inline AbstractSyntaxTreeNode::iterator AbstractSyntaxTreeNode::begin() {
+  return iterator(Data.begin());
 }
 
-inline AbstractSyntaxTreeNode::subtree_iterator
-AbstractSyntaxTreeNode::subtree_end() {
+inline AbstractSyntaxTreeNode::iterator AbstractSyntaxTreeNode::end() {
   // Leaf node: it has not any sub-tree, but since the same space used to hold
   // subtree pointers is also used to hold the payload of the leaf, we have to
   // adjust the end of the sub-tree sequence.
   if(llvm::isa<TokenAST>(this))
-    return subtree_iterator(Data.begin());
+    return iterator(Data.begin());
 
   // Internal node, the end iterator is the real end of the underlying array.
   else
-    return subtree_iterator(Data.end());
+    return iterator(Data.end());
 }
 
-inline AbstractSyntaxTreeNode::const_subtree_iterator
-AbstractSyntaxTreeNode::subtree_begin() const {
-  return const_subtree_iterator(Data.begin());
+inline AbstractSyntaxTreeNode::const_iterator
+AbstractSyntaxTreeNode::begin() const {
+  return const_iterator(Data.begin());
 }
 
-inline AbstractSyntaxTreeNode::const_subtree_iterator
-AbstractSyntaxTreeNode::subtree_end() const {
+inline AbstractSyntaxTreeNode::const_iterator
+AbstractSyntaxTreeNode::end() const {
   // Leaf node: it has not any sub-tree, but since the same space used to hold
   // subtree pointers is also used to hold the payload of the leaf, we have to
   // adjust the end of the sub-tree sequence.
   if(llvm::isa<TokenAST>(this))
-    return const_subtree_iterator(Data.begin());
+    return const_iterator(Data.begin());
 
   // Internal node, the end iterator is the real end of the underlying array.
   else
-    return const_subtree_iterator(Data.end());
+    return const_iterator(Data.end());
 }
 
 // TODO: switch to an iterative algorithm.
@@ -617,5 +658,186 @@ inline AbstractSyntaxTreeNode::~AbstractSyntaxTreeNode() {
 }
 
 } // End namespace acse.
+
+// LLVM provides a nice graph-toolkit. Basically, everything resemble a graph
+// can be manipulated by some template algorithms -- e.g. different kind of
+// visits.
+//
+// In order to use these algorithms, we must tell to LLVM that our
+// AbstractSyntaxTreeNode is actually a graph. This is done through the
+// specialization of the GraphTraits template, which MUST OCCURS inside the llvm
+// namespace.
+namespace llvm {
+
+using namespace acse;
+
+template <>
+struct GraphTraits<AbstractSyntaxTreeNode *> {
+  typedef AbstractSyntaxTreeNode NodeType;
+  typedef AbstractSyntaxTreeNode::iterator ChildIteratorType;
+
+  static inline
+  NodeType *getEntryNode(AbstractSyntaxTreeNode *AST) {
+    return AST;
+  }
+
+  static inline
+  ChildIteratorType child_begin(AbstractSyntaxTreeNode *AST) {
+    return AST->begin();
+  }
+
+  static inline
+  ChildIteratorType child_end(AbstractSyntaxTreeNode *AST) {
+    return AST->end();
+  }
+};
+
+template <>
+struct GraphTraits<const AbstractSyntaxTreeNode *> {
+  typedef const AbstractSyntaxTreeNode NodeType;
+  typedef AbstractSyntaxTreeNode::const_iterator ChildIteratorType;
+
+  static inline
+  NodeType *getEntryNode(const AbstractSyntaxTreeNode *AST) {
+    return AST;
+  }
+
+  static inline
+  ChildIteratorType child_begin(const AbstractSyntaxTreeNode *AST) {
+    return AST->begin();
+  }
+
+  static inline
+  ChildIteratorType child_end(const AbstractSyntaxTreeNode *AST) {
+    return AST->end();
+  }
+};
+
+} // End namespace llvm.
+
+namespace acse {
+
+// A common practice in C++ data structures design is to divide the
+// implementation of the core data structure from the interface exposed to the
+// user. In the context of the AST, the class AbstractSyntaxTreeNode implements
+// the core structure of the tree, while AbstractSyntaxTree is the interface.
+//
+// This enable to put inside AbstractSyntaxTreeNode only data and member
+// functions needed to build a working tree. High-level accessors methods, such
+// as printing or viewing the AST are implemented inside AbstractSyntaxTree.
+//
+// In more sophisticated designs, this is also a good place where implement
+// high-level queries about the tree contents and structure, and possibly
+// caching their results.
+class AbstractSyntaxTree {
+public:
+  typedef llvm::df_iterator<AbstractSyntaxTreeNode *> iterator;
+  typedef llvm::df_iterator<const AbstractSyntaxTreeNode *> const_iterator;
+
+public:
+  iterator begin() {
+    if(Root)
+      return llvm::df_begin(Root.get());
+    else
+      return llvm::df_end(Root.get());
+  }
+
+  iterator end() {
+    return llvm::df_end(Root.get());
+  }
+
+  const_iterator begin() const {
+    const AbstractSyntaxTreeNode *CRoot =
+      const_cast<const AbstractSyntaxTreeNode *>(Root.get());
+
+    if(CRoot)
+      return llvm::df_begin(CRoot);
+    else
+      return llvm::df_end(CRoot);
+  }
+
+  const_iterator end() const {
+    const AbstractSyntaxTreeNode *CRoot =
+      const_cast<const AbstractSyntaxTreeNode *>(Root.get());
+
+    return llvm::df_end(CRoot);
+  }
+
+public:
+  AbstractSyntaxTree(ProgramAST *Root) : Root(Root) { }
+
+private:
+  AbstractSyntaxTree(const AbstractSyntaxTree &That)
+    LLVM_DELETED_FUNCTION;
+  const AbstractSyntaxTree &operator=(const AbstractSyntaxTree &That)
+    LLVM_DELETED_FUNCTION;
+
+public:
+  ProgramAST *GetRoot() const { return llvm::cast<ProgramAST>(Root.get()); }
+
+public:
+  void Dump(llvm::raw_ostream &OS = llvm::errs()) const;
+  void View() const;
+
+private:
+  llvm::OwningPtr<AbstractSyntaxTreeNode> Root;
+};
+
+} // End namespace acse.
+
+// Since we defined AbstractSyntaxTree to be our entry point to the AST, it must
+// acts like a graph. However, with respect to AbstractSyntaxTreeNode, we do not
+// have a set of sub-trees to visit. Indeed, AbstractSyntaxTree acts like a
+// proxy, hence the real graph is the node AbstractSyntaxTree identifies as the
+// root.
+//
+// Moreover, since it is an entry point, it is useful iterating over all nodes
+// in the AST. Please notice that this feature is not supported in
+// AbstractSyntaxTreeNode, basically because when you are dealing with an
+// internal node you are usually interested on its immediate successors, not on
+// all its successors.
+namespace llvm {
+
+using namespace acse;
+
+template <>
+struct GraphTraits<AbstractSyntaxTree *>
+  : public GraphTraits<AbstractSyntaxTreeNode *> {
+  typedef AbstractSyntaxTree::iterator nodes_iterator;
+
+  static inline
+  NodeType *getEntryNode(AbstractSyntaxTree *AST) {
+    return AST->GetRoot();
+  }
+
+  static inline nodes_iterator nodes_begin(AbstractSyntaxTree *AST) {
+    return AST->begin();
+  }
+
+  static inline nodes_iterator nodes_end(AbstractSyntaxTree *AST) {
+    return AST->end();
+  }
+};
+
+template <>
+struct GraphTraits<const AbstractSyntaxTree *>
+  : public GraphTraits<const AbstractSyntaxTreeNode *> {
+  typedef AbstractSyntaxTree::const_iterator nodes_iterator;
+
+  static inline
+  NodeType *getEntryNode(const AbstractSyntaxTree *AST) {
+    return AST->GetRoot();
+  }
+
+  static inline nodes_iterator nodes_begin(const AbstractSyntaxTree *AST) {
+    return AST->begin();
+  }
+
+  static inline nodes_iterator nodes_end(const AbstractSyntaxTree *AST) {
+    return AST->end();
+  }
+};
+
+} // End namespace llvm.
 
 #endif // ACSE_LEX_ABSTRACTSYNTAXTREE_H

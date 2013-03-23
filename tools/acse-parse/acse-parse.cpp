@@ -32,6 +32,11 @@ OutputFileName("o",
                llvm::cl::init("-"),
                llvm::cl::value_desc("filename"));
 
+static llvm::cl::opt<bool>
+ViewAST("view-ast",
+        llvm::cl::desc("View AST with dotty"),
+        llvm::cl::init(false));
+
 int main(int argc, char *argv[]) {
   // Setup pretty stack trace printers.
   llvm::PrettyStackTraceProgram X(argc, argv);
@@ -69,11 +74,15 @@ int main(int argc, char *argv[]) {
 
   Parse.Run();
 
-  if(AbstractSyntaxTree *AST = Parse.GetAST())
-    AST->Dump(Output->os());
-
   if(!Parse.Success())
     return EXIT_FAILURE;
+
+  AbstractSyntaxTree *AST = Parse.GetAST();
+
+  if(ViewAST)
+    AST->View();
+  else
+    AST->Dump(Output->os());
 
   Output->keep();
 
