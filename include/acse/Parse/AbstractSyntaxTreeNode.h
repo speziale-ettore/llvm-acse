@@ -492,7 +492,7 @@ public:
   }
 
 public:
-  InitializerAST(NumberAST *N) : AbstractSyntaxTreeNode(Number, N) { }
+  InitializerAST(NumberAST *N) : AbstractSyntaxTreeNode(Initializer, N) { }
 };
 
 class ArrayDeclarationAST : public AbstractSyntaxTreeNode { };
