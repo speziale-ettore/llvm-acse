@@ -14,6 +14,7 @@
 
 #include "llvm/ADT/GraphTraits.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Support/Casting.h"
 
 // TODO: put grammar rule on top of each corresponding node type.
@@ -601,60 +602,6 @@ public:
     : AbstractSyntaxTreeNode(Program, VarDecls, Stmts) { }
 };
 
-//
-// Inline methods that cannot be implemented at declaration time.
-//
-
-inline AbstractSyntaxTreeNode::iterator AbstractSyntaxTreeNode::begin() {
-  return iterator(Data.begin());
-}
-
-inline AbstractSyntaxTreeNode::iterator AbstractSyntaxTreeNode::end() {
-  // Leaf node: it has not any sub-tree, but since the same space used to hold
-  // subtree pointers is also used to hold the payload of the leaf, we have to
-  // adjust the end of the sub-tree sequence.
-  if(llvm::isa<TokenAST>(this))
-    return iterator(Data.begin());
-
-  // Internal node, the end iterator is the real end of the underlying array.
-  else
-    return iterator(Data.end());
-}
-
-inline AbstractSyntaxTreeNode::const_iterator
-AbstractSyntaxTreeNode::begin() const {
-  return const_iterator(Data.begin());
-}
-
-inline AbstractSyntaxTreeNode::const_iterator
-AbstractSyntaxTreeNode::end() const {
-  // Leaf node: it has not any sub-tree, but since the same space used to hold
-  // subtree pointers is also used to hold the payload of the leaf, we have to
-  // adjust the end of the sub-tree sequence.
-  if(llvm::isa<TokenAST>(this))
-    return const_iterator(Data.begin());
-
-  // Internal node, the end iterator is the real end of the underlying array.
-  else
-    return const_iterator(Data.end());
-}
-
-// TODO: switch to an iterative algorithm.
-inline AbstractSyntaxTreeNode::~AbstractSyntaxTreeNode() {
-  NodeData::iterator I = Data.begin();
-
-  // This class provides the storage for all subclasses, thus it is the only
-  // that can free node resources. In order to do that, we need to check which
-  // is the actual type of the node and free the correct set of resources.
-  //
-  // Sometimes, you still need to use old C-like tricks in C++.
-  if(llvm::isa<TokenAST>(this)) {
-    delete I->Tok;
-  } else for(NodeData::iterator E = Data.end(); I != E; ++I) {
-    delete I->AST;
-  }
-}
-
 } // End namespace acse.
 
 // LLVM provides a nice graph-toolkit. Basically, everything resemble a graph
@@ -712,5 +659,77 @@ struct GraphTraits<const AbstractSyntaxTreeNode *> {
 };
 
 } // End namespace llvm.
+
+// Some AbstractSyntaxTreeNode member functions requires GraphTraits, hence I
+// had to write their inline implementations outside class definition.
+namespace acse {
+
+inline AbstractSyntaxTreeNode::iterator AbstractSyntaxTreeNode::begin() {
+  return iterator(Data.begin());
+}
+
+inline AbstractSyntaxTreeNode::iterator AbstractSyntaxTreeNode::end() {
+  // Leaf node: it has not any sub-tree, but since the same space used to hold
+  // subtree pointers is also used to hold the payload of the leaf, we have to
+  // adjust the end of the sub-tree sequence.
+  if(llvm::isa<TokenAST>(this))
+    return iterator(Data.begin());
+
+  // Internal node, the end iterator is the real end of the underlying array.
+  else
+    return iterator(Data.end());
+}
+
+inline AbstractSyntaxTreeNode::const_iterator
+AbstractSyntaxTreeNode::begin() const {
+  return const_iterator(Data.begin());
+}
+
+inline AbstractSyntaxTreeNode::const_iterator
+AbstractSyntaxTreeNode::end() const {
+  // Leaf node: it has not any sub-tree, but since the same space used to hold
+  // subtree pointers is also used to hold the payload of the leaf, we have to
+  // adjust the end of the sub-tree sequence.
+  if(llvm::isa<TokenAST>(this))
+    return const_iterator(Data.begin());
+
+  // Internal node, the end iterator is the real end of the underlying array.
+  else
+    return const_iterator(Data.end());
+}
+
+inline
+AbstractSyntaxTreeNode::~AbstractSyntaxTreeNode() {
+  // This node is actually a leaf of the AST, hence there are not nodes to free.
+  // We just have to delete the corresponding token.
+  if(llvm::isa<TokenAST>(this)) {
+    NodeDataPtr Ptr = Data.front();
+    delete Ptr.Tok;
+  }
+
+  // Visit the AST in depth-first, post-order mode. In this way, we can free the
+  // memory used by a node at each step of the iteration -- after visiting the
+  // current node, nobody will access it!
+  //
+  // Please notice that for leaves of the AST, the start and the end of the
+  // sequence is the same, hence the loop is totally skipped.
+  for(llvm::po_iterator<AbstractSyntaxTreeNode *> I = llvm::po_begin(this),
+                                                  E = llvm::po_end(this);
+                                                  I != E;
+                                                  ++I) {
+    // If the current node is an internal node, we have to delete all its
+    // sub-trees, in order to avoid recursive destructor calls!
+    if(!llvm::isa<TokenAST>(*I)) {
+      NodeData &Data = I->Data;
+      Data.clear();
+    }
+
+    // Free the current node only if it is different from the node we are
+    // currently destroying.
+    if(*I != this) delete *I;
+  }
+}
+
+} // End namespace acse.
 
 #endif // ACSE_LEX_ABSTRACTSYNTAXTREENODE_H
