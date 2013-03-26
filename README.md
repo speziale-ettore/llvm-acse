@@ -1,6 +1,6 @@
 
 llvm-acse -- ACSE compiler with LLVM
-======================================
+====================================
 
 Back in the old days, Doc. Andrea Di Biagio wrote a simple compiler, ACSE,
 intended to be used by students of Politecnico di Milano to learn basic stuffs
