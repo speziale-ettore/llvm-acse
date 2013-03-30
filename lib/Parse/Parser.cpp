@@ -24,7 +24,7 @@ bool Parser::Run() {
   Stmts.reset(ParseStatements());
 
   // Check if there is something left to parse in the stream.
-  ErrorsFound = ErrorsFound && Lex.Success();
+  ErrorsFound = ErrorsFound || !Lex.Success();
  
   if(!ErrorsFound) {
     ProgramAST *Prog = new ProgramAST(VarDecls.take(), Stmts.take());
