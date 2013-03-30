@@ -117,6 +117,7 @@ llvm::raw_ostream &acse::operator<<(llvm::raw_ostream &OS,
   AST(LOr)
 
   // Keywords.
+  AST(Int)
   AST(If)
   AST(Else)
   AST(Do)
@@ -140,6 +141,7 @@ llvm::raw_ostream &acse::operator<<(llvm::raw_ostream &OS,
   AST(DeclarationList)
   AST(Declaration)
   AST(ScalarDeclaration)
+  AST(Type)
   AST(Initializer)
 
   #undef AST

@@ -99,6 +99,7 @@ private:
   DeclarationAST *ParseDeclaration();
   ScalarDeclarationAST *ParseScalarDeclaration();
   ArrayDeclarationAST *ParseArrayDeclaration();
+  TypeAST *ParseType();
   InitializerAST *ParseInitializer();
 
   StatementsAST *ParseStatements();

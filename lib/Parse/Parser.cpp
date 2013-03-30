@@ -68,32 +68,27 @@ NonEmptyVarDeclarationsAST *Parser::ParseNonEmptyVarDeclarations() {
   return VarDecls;
 }
 
-// var_declaration: *Identifier* declaration_list *SemiColon*
+// var_declaration: type declaration_list *SemiColon*
 VarDeclarationAST *Parser::ParseVarDeclaration() {
-  llvm::OwningPtr<IdentifierAST> Id;
+  llvm::OwningPtr<TypeAST> Type;
   llvm::OwningPtr<DeclarationListAST> DeclList;
   llvm::OwningPtr<SemiColonAST> SemiColon;
 
-  // Nothing to parse here, return immediately.
-  if(!llvm::dyn_cast_or_null<IdentifierTok>(Lex.Peek(0)))
+  // Try parsing a type.
+  Type.reset(ParseType());
+
+  // Failed parsing a type. We are not parsing a var_declaration.
+  if(!Type)
     return 0;
 
-  // LL parsing: by checking the next token we known which parser to spawn. In
-  // that case we expect an identifier, if not found we cannot parse anything.
-  if(!llvm::dyn_cast_or_null<IdentifierTok>(Lex.Peek(1)))
-    return 0;
-
-  // It is now sure we are parsing a var_declarations: consume all the tokens
-  // and prepare ...
-  Id.reset(new IdentifierAST(Lex.TakeAs<IdentifierTok>()));
-
-  // ... to try parsing a declaration list.
+  // It is now sure we are parsing a var_declaration: try parsing a
+  // declaration_list.
   DeclList.reset(ParseDeclarationList());
 
-  // Failed to parse a declaration-list; we are sure this is an error in the
+  // Failed to parse a declaration_list; we are sure this is an error in the
   // input stream -- signal it to the user.
   if(!DeclList) {
-    ReportError(ExpectedDeclarationList, Id->GetEndLoc());
+    ReportError(ExpectedDeclarationList, Type->GetEndLoc());
     return 0;
   }
 
@@ -106,7 +101,7 @@ VarDeclarationAST *Parser::ParseVarDeclaration() {
   // Semicolon found: consume it.
   SemiColon.reset(new SemiColonAST(Lex.TakeAs<SemiColonTok>()));
 
-  return new VarDeclarationAST(Id.take(), DeclList.take(), SemiColon.take());
+  return new VarDeclarationAST(Type.take(), DeclList.take(), SemiColon.take());
 }
 
 // declaration_list: declaration *Comma* declaration_list
@@ -198,6 +193,16 @@ ScalarDeclarationAST *Parser::ParseScalarDeclaration() {
 
 ArrayDeclarationAST *Parser::ParseArrayDeclaration() {
   return 0;
+}
+
+// type: *Int*
+TypeAST *Parser::ParseType() {
+  TypeAST *Type = 0;
+
+  if(llvm::dyn_cast_or_null<IntTok>(Lex.Peek(0)))
+    Type = new TypeAST(new IntAST(Lex.TakeAs<IntTok>()));
+
+  return Type;
 }
 
 // initializer: *Number*

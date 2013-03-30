@@ -115,6 +115,7 @@ public:
     LOr,
 
     // Keywords.
+    Int,
     If,
     Else,
     Do,
@@ -138,6 +139,7 @@ public:
     DeclarationList,
     Declaration,
     ScalarDeclaration,
+    Type,
     Initializer,
 
     // Special enum values.
@@ -453,6 +455,18 @@ TOKEN_AST(Colon)
 TOKEN_AST(Comma)
 TOKEN_AST(Assign)
 
+//
+// Keyword AST.
+//
+
+TOKEN_AST(Int)
+TOKEN_AST(If)
+TOKEN_AST(Else)
+TOKEN_AST(Do)
+TOKEN_AST(While)
+TOKEN_AST(Read)
+TOKEN_AST(Write)
+
 #undef TOKEN_AST
 
 //
@@ -485,6 +499,7 @@ public:
 
 class StatementsAST : public AbstractSyntaxTreeNode { };
 
+// initializer: *Number*
 class InitializerAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(AbstractSyntaxTreeNode *AST) {
@@ -493,6 +508,17 @@ public:
 
 public:
   InitializerAST(NumberAST *N) : AbstractSyntaxTreeNode(Initializer, N) { }
+};
+
+// type: *Int*
+class TypeAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == Type;
+  }
+
+public:
+  TypeAST(IntAST *Int) : AbstractSyntaxTreeNode(Type, Int) { }
 };
 
 class ArrayDeclarationAST : public AbstractSyntaxTreeNode { };
@@ -554,10 +580,10 @@ public:
   }
 
 public:
-  VarDeclarationAST(IdentifierAST *Id,
+  VarDeclarationAST(TypeAST *Type,
                     DeclarationListAST *DeclList,
                     SemiColonAST *Semi)
-    : AbstractSyntaxTreeNode(VarDeclaration, Id, DeclList, Semi) { }
+    : AbstractSyntaxTreeNode(VarDeclaration, Type, DeclList, Semi) { }
 };
 
 // non_empty_var_declarations: var_declaration non_empty_var_declarations

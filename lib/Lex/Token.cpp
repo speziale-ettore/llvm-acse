@@ -64,6 +64,7 @@ llvm::raw_ostream &acse::operator<<(llvm::raw_ostream &OS,
   TOKEN(LOr)
 
   // Keywords.
+  TOKEN(Int)
   TOKEN(If)
   TOKEN(Else)
   TOKEN(Do)

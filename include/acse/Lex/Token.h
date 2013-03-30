@@ -73,6 +73,7 @@ public:
     LOr,  // '||'
 
     // Keywords.
+    Int,   // 'int'
     If,    // 'if'
     Else,  // 'else'
     Do,    // 'do'
@@ -210,6 +211,7 @@ TOKEN(LOr)
 #define TOKEN(I) TOKEN_CLASS(I, KeywordTok)
 
 // Keywords.
+TOKEN(Int)
 TOKEN(If)
 TOKEN(Else)
 TOKEN(Do)

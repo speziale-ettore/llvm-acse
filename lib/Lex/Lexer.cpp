@@ -285,6 +285,7 @@ bool Lexer::ScanIdentifier() {
     return true;                                                      \
   }
 
+  TOKEN("int", Int)
   TOKEN("if", If)
   TOKEN("else", Else)
   TOKEN("do", Do)

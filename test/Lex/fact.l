@@ -3,8 +3,8 @@
 
 int fact = 1,
     n = 10;
-// CHECK:      Identifier Identifier Assign Number Comma
-// CHECK-NEXT:            Identifier Assign Number SemiColon
+// CHECK:      Int Identifier Assign Number Comma
+// CHECK-NEXT:     Identifier Assign Number SemiColon
 
 while(n) {
   fact = fact * n;
