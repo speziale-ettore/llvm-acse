@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef ACSE_LEX_ABSTRACTSYNTAXTREE_H
-#define ACSE_LEX_ABSTRACTSYNTAXTREE_H
+#ifndef ACSE_PARSE_ABSTRACTSYNTAXTREE_H
+#define ACSE_PARSE_ABSTRACTSYNTAXTREE_H
 
 #include "acse/Parse/AbstractSyntaxTreeNode.h"
 
@@ -140,4 +140,4 @@ struct GraphTraits<const AbstractSyntaxTree *>
 
 } // End namespace llvm.
 
-#endif // ACSE_LEX_ABSTRACTSYNTAXTREE_H
+#endif // ACSE_PARSE_ABSTRACTSYNTAXTREE_H
