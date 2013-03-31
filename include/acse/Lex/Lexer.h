@@ -195,7 +195,7 @@ private:
       return false;
     }
 
-    llvm_unreachable( "Not reachable" );
+    llvm_unreachable("Not reachable");
   }
 
   // We cannot use std::isalpha because it is LOCALE-sensitive, while LANCE it
