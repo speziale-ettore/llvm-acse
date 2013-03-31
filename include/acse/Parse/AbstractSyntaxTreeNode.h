@@ -385,6 +385,42 @@ public:
 };
 
 //
+// Comments AST.
+//
+
+class LineCommentAST : public TokenAST {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == LineComment;
+  }
+
+public:
+  LineCommentAST(LineCommentTok *Tok) : TokenAST(LineComment, Tok) { }
+};
+
+class MultiLineCommentAST : public TokenAST {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == MultiLineComment;
+  }
+
+public:
+  MultiLineCommentAST(MultiLineCommentTok *Tok)
+    : TokenAST(MultiLineComment, Tok) { }
+};
+
+//
+// Braces and co. AST.
+//
+
+TOKEN_AST(LBrace)
+TOKEN_AST(RBrace)
+TOKEN_AST(LSquare)
+TOKEN_AST(RSquare)
+TOKEN_AST(LPar)
+TOKEN_AST(RPar)
+
+//
 // Separators/terminators AST.
 //
 
@@ -392,6 +428,44 @@ TOKEN_AST(SemiColon)
 TOKEN_AST(Colon)
 TOKEN_AST(Comma)
 TOKEN_AST(Assign)
+
+//
+// Algebraic operators AST.
+//
+
+TOKEN_AST(Add)
+TOKEN_AST(Sub)
+TOKEN_AST(Mul)
+TOKEN_AST(Div)
+TOKEN_AST(Mod)
+
+//
+// Relational operators AST.
+//
+
+TOKEN_AST(Less)
+TOKEN_AST(LessOrEqual)
+TOKEN_AST(Equal)
+TOKEN_AST(NotEqual)
+TOKEN_AST(GreaterOrEqual)
+TOKEN_AST(Greater)
+
+//
+// Bitwise operators AST.
+//
+
+TOKEN_AST(BAnd)
+TOKEN_AST(BOr)
+TOKEN_AST(BNot)
+TOKEN_AST(LShift)
+TOKEN_AST(RShift)
+
+//
+// Logical operators AST.
+//
+
+TOKEN_AST(LAnd)
+TOKEN_AST(LOr)
 
 //
 // Keyword AST.
@@ -440,7 +514,7 @@ class StatementsAST : public AbstractSyntaxTreeNode { };
 // initializer: *Number*
 class InitializerAST : public AbstractSyntaxTreeNode {
 public:
-  static inline bool classof(AbstractSyntaxTreeNode *AST) {
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == Initializer;
   }
 
@@ -451,7 +525,7 @@ public:
 // type: *Int*
 class TypeAST : public AbstractSyntaxTreeNode {
 public:
-  static inline bool classof(AbstractSyntaxTreeNode *AST) {
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == Type;
   }
 
@@ -465,7 +539,7 @@ class ArrayDeclarationAST : public AbstractSyntaxTreeNode { };
 //                   | *Identifier* *Assign* initializer
 class ScalarDeclarationAST : public AbstractSyntaxTreeNode {
 public:
-  static inline bool classof(AbstractSyntaxTreeNode *AST) {
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == ScalarDeclaration;
   }
 
@@ -483,7 +557,7 @@ public:
 //            | array_declaration
 class DeclarationAST : public AbstractSyntaxTreeNode {
 public:
-  static inline bool classof(AbstractSyntaxTreeNode *AST) {
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == Declaration;
   }
 
@@ -499,7 +573,7 @@ public:
 //                 | declaration
 class DeclarationListAST : public AbstractSyntaxTreeNode {
 public:
-  static inline bool classof(AbstractSyntaxTreeNode *AST) {
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == DeclarationList;
   }
 
