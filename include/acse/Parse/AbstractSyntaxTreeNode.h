@@ -68,82 +68,20 @@ namespace acse {
 // corresponding token. Thus, getting the sub-trees of node is trivial.
 class AbstractSyntaxTreeNode {
 public:
-  // Every parsed entity is represented by a different subclass of
-  // AbstractSyntaxTreeNode. Every entity X is represented by class XAST.
   enum Id {
-    // Special ASTs.
+    // Special ASTs, representing the null expansion. Corresponding class is
+    // EmptyAST.
     Empty,
 
-    // Braces and co.
-    LBrace,
-    RBrace,
-    LSquare,
-    RSquare,
-    LPar,
-    RPar,
-
-    // Separators/terminators.
-    SemiColon,
-    Colon,
-    Comma,
-    Assign,
-
-    // Algebraic operators.
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Mod,
-
-    // Relational operators.
-    Less,
-    LessOrEqual,
-    Equal,
-    NotEqual,
-    GreaterOrEqual,
-    Greater,
-
-    // Bitwise operators.
-    BAnd,
-    BOr,
-    BNot,
-    LShift,
-    RShift,
-
-    // Logical operators.
-    LAnd,
-    LOr,
-
-    // Keywords.
-    Int,
-    If,
-    Else,
-    Do,
-    While,
-    Read,
-    Write,
-
-    // Typed.
-    Number,
-    Identifier,
-
-    // Non-terminal rule ASTs: grammar root.
-    Program,
-
-    // Non-terminal rule ASTs: variable declarations.
-    VarDeclarations,
-    NonEmptyVarDeclarations,
-    VarDeclaration,
-
-    // Non-terminal rule ASTs: declarations.
-    DeclarationList,
-    Declaration,
-    ScalarDeclaration,
-    Type,
-    Initializer,
+    // Every parsed entity is represented by a different subclass of
+    // AbstractSyntaxTreeNode. Every entity X is represented by class XAST.
+    #define AST(I) \
+    I,
+    #include "acse/Parse/AbstractSyntaxTreeNode.def"
+    #undef AST
 
     // Special enum values.
-    MinTokenId = LBrace,
+    MinTokenId = LineComment,
     MaxTokenId = Identifier
   };
 

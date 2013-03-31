@@ -1,0 +1,29 @@
+//===- AbstractSyntaxTreeNode.def - LANCE ASTs ------------------*- C++ -*-===//
+//
+//                     The LLVM Compiler Infrastructure
+//
+// This file is distributed under the University of Illinois Open Source
+// License. See LICENSE.TXT for details.
+//
+//===----------------------------------------------------------------------===//
+
+// Each token is represented by a different AST.
+#define TOKEN(I) \
+AST(I)
+#include "acse/Lex/Token.def"
+#undef TOKEN
+
+// Grammar root.
+AST(Program)
+
+// Non-terminal rule ASTs: variable declarations.
+AST(VarDeclarations)
+AST(NonEmptyVarDeclarations)
+AST(VarDeclaration)
+
+// Non-terminal rule ASTs: declarations.
+AST(DeclarationList)
+AST(Declaration)
+AST(ScalarDeclaration)
+AST(Type)
+AST(Initializer)

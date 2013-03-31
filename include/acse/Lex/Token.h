@@ -18,81 +18,14 @@ namespace acse {
 
 class Token : public llvm::ilist_node<Token> {
 public:
-  // For each token kind there is a corresponding subclass of Token. The
-  // convention is that given a token kind A, the corresponding class is named
-  // ATok.
   enum Id {
-    // Comments.
-    //
-    // A C99/C++ style comment. All text starting from '//' until the end of the
-    // line is considered a comment, and represented using a single token.
-    LineComment,
-    // A C/C++ style multi-line comment. All text surrounded by '/*' and '*/' is
-    // considered a comment. The comment can span multiple lines, and it is
-    // represented using a single token.
-    MultiLineComment,
-
-    // Braces and co.
-    LBrace,  // '{'
-    RBrace,  // '}'
-    LSquare, // '['
-    RSquare, // ']'
-    LPar,    // '('
-    RPar,    // ')'
-
-    // Separators/terminators.
-    SemiColon, // ';'
-    Colon,     // ':'
-    Comma,     // ','
-    Assign,    // '='
-
-    // Algebraic operators.
-    Add, // '+'
-    Sub, // '-'
-    Mul, // '*'
-    Div, // '/'
-    Mod, // '%'
-
-    // Relational operators.
-    Less,           // '<'
-    LessOrEqual,    // '<='
-    Equal,          // '=='
-    NotEqual,       // '!='
-    GreaterOrEqual, // '>='
-    Greater,        // '>'
-
-    // Bitwise operators.
-    BAnd,   // '&'
-    BOr,    // '|'
-    BNot,   // '!'
-    LShift, // '<<'
-    RShift, // '>>'
-
-    // Logical operators.
-    LAnd, // '&&'
-    LOr,  // '||'
-
-    // Keywords.
-    Int,   // 'int'
-    If,    // 'if'
-    Else,  // 'else'
-    Do,    // 'do'
-    While, // 'while'
-    Read,  // 'read'
-    Write, // 'write'
-
-    // Typed.
-    //
-    // A number is a list of digits. The list must be non empty and the first
-    // digit should be different than '0': [1-9][0-9]*. The number is actually
-    // interpreted as a 32-bit unsigned integer expressed in base-10.
-    //
-    // Please notice that negative numbers are not allowed. For instance '-42'
-    // actually consists of two tokens: Sub and Number.
-    Number,
-    // An identifier is a non-empty lists of alphanumeric characters and '_'.
-    // The first character cannot be a digit: [a-zA-Z_][a-zA-Z_0-9]*.
-    Identifier,
+    // For each token kind there is a corresponding subclass of Token. The
+    // convention is that given a token kind A, the corresponding class is named
+    // ATok.
+    #define TOKEN(I) \
+    I,
+    #include "acse/Lex/Token.def"
+    #undef TOKEN
 
     // Special.
     Invalid,

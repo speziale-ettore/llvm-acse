@@ -1,0 +1,80 @@
+//===- Token.def - LANCE Tokens ---------------------------------*- C++ -*-===//
+//
+//                     The LLVM Compiler Infrastructure
+//
+// This file is distributed under the University of Illinois Open Source
+// License. See LICENSE.TXT for details.
+//
+//===----------------------------------------------------------------------===//
+
+// Comments.
+//
+// A C99/C++ style comment. All text starting from '//' until the end of the
+// line is considered a comment, and represented using a single token.
+TOKEN(LineComment)
+// A C/C++ style multi-line comment. All text surrounded by '/*' and '*/' is
+// considered a comment. The comment can span multiple lines, and it is
+// represented using a single token.
+TOKEN(MultiLineComment)
+
+// Braces and co.
+TOKEN(LBrace)  // '{'
+TOKEN(RBrace)  // '}'
+TOKEN(LSquare) // '['
+TOKEN(RSquare) // ']'
+TOKEN(LPar)    // '('
+TOKEN(RPar)    // ')'
+
+// Separators/terminators.
+TOKEN(SemiColon) // ';'
+TOKEN(Colon)     // ':'
+TOKEN(Comma)     // ','
+TOKEN(Assign)    // '='
+
+// Algebraic operators.
+TOKEN(Add) // '+'
+TOKEN(Sub) // '-'
+TOKEN(Mul) // '*'
+TOKEN(Div) // '/'
+TOKEN(Mod) // '%'
+
+// Relational operators.
+TOKEN(Less)           // '<'
+TOKEN(LessOrEqual)    // '<='
+TOKEN(Equal)          // '=='
+TOKEN(NotEqual)       // '!='
+TOKEN(GreaterOrEqual) // '>='
+TOKEN(Greater)        // '>'
+
+// Bitwise operators.
+TOKEN(BAnd)   // '&'
+TOKEN(BOr)    // '|'
+TOKEN(BNot)   // '!'
+TOKEN(LShift) // '<<'
+TOKEN(RShift) // '>>'
+
+// Logical operators.
+TOKEN(LAnd) // '&&'
+TOKEN(LOr)  // '||'
+
+// Keywords.
+TOKEN(Int)   // 'int'
+TOKEN(If)    // 'if'
+TOKEN(Else)  // 'else'
+TOKEN(Do)    // 'do'
+TOKEN(While) // 'while'
+TOKEN(Read)  // 'read'
+TOKEN(Write) // 'write'
+
+// Typed.
+//
+// A number is a list of digits. The list must be non empty and the first
+// digit should be different than '0': [1-9][0-9]*. The number is actually
+// interpreted as a 32-bit unsigned integer expressed in base-10.
+//
+// Please notice that negative numbers are not allowed. For instance '-42'
+// actually consists of two tokens: Sub and Number.
+TOKEN(Number)
+// An identifier is a non-empty lists of alphanumeric characters and '_'.
+// The first character cannot be a digit: [a-zA-Z_][a-zA-Z_0-9]*.
+TOKEN(Identifier)
