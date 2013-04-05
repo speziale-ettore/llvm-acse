@@ -237,6 +237,9 @@ public:
   const_iterator begin() const;
   const_iterator end() const;
 
+  size_t size() const;
+  bool empty() const;
+
 protected:
   // This constructor insert all non-null input trees inside the current tree.
   // Please notice that this is an "internal" constructor, so a null tree just
@@ -295,6 +298,25 @@ public:
 
   llvm::SMLoc GetStartLoc() const;
   llvm::SMLoc GetEndLoc() const;
+
+public:
+  bool IsLeftmostChild(const AbstractSyntaxTreeNode *That) const {
+    if(empty())
+      return false;
+
+    NodeDataPtr Leftmost = Data.front();
+
+    return Leftmost.AST == That;
+  }
+
+  bool IsRightmostChild(const AbstractSyntaxTreeNode *That) const {
+    if(empty())
+      return false;
+
+    NodeDataPtr Rightmost = Data.back();
+
+    return Rightmost.AST == That;
+  }
 
 protected:
   // This field should be protected because subclasses should access to their
@@ -734,6 +756,14 @@ AbstractSyntaxTreeNode::end() const {
   // Internal node, the end iterator is the real end of the underlying array.
   else
     return const_iterator(Data.end());
+}
+
+inline size_t AbstractSyntaxTreeNode::size() const {
+  return llvm::isa<TokenAST>(this) ? 0 : Data.size();
+}
+
+inline bool AbstractSyntaxTreeNode::empty() const {
+  return size() == 0;
 }
 
 inline

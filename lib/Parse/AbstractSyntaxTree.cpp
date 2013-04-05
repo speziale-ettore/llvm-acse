@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "acse/Parse/AbstractSyntaxTree.h"
+#include "acse/Parse/AbstractSyntaxTreeVisitor.h"
 
 #include "llvm/Support/GraphWriter.h"
 
@@ -51,6 +52,51 @@ struct DOTGraphTraits<const AbstractSyntaxTree *>
 
 } // End namespace llvm.
 
+namespace {
+
+class AbstractSyntaxTreePrinter
+  : public PreOrderAbstractSyntaxTreeVisitor<AbstractSyntaxTreePrinter> {
+public:
+  AbstractSyntaxTreePrinter(const AbstractSyntaxTree &AST,
+                            llvm::raw_ostream &OS)
+    : PreOrderAbstractSyntaxTreeVisitor(AST),
+      OS(OS) { }
+
+public:
+  #define AST(I)                               \
+  NextAction Visit ## I(const I ## AST &AST) { \
+    PrintInEdge() << AST.GetId() << "\n";     \
+    return Continue;                           \
+  }
+  #include "acse/Parse/AbstractSyntaxTreeNode.def"
+  #undef AST
+
+private:
+  llvm::raw_ostream &PrintInEdge() {
+    iterator I = begin(), E = end();
+
+    // Root has not predecessors: nothing to print.
+    if(I == E)
+      return OS;
+
+    OS << " ";
+    for(iterator J = I++; I != E; ++I, ++J) {
+      if(!J->IsRightmostChild(&*I))
+        OS << "|";
+      else
+        OS << " ";
+      OS << "    ";
+    }
+
+    return OS << "+-> ";
+  }
+
+private:
+  llvm::raw_ostream &OS;
+};
+
+} // End anonymous namespace.
+
 //
 // AbstractSyntaxTreeNode implementation.
 //
@@ -86,7 +132,10 @@ llvm::raw_ostream &acse::operator<<(llvm::raw_ostream &OS,
 // AbstractSyntaxTree implementation.
 //
 
-void AbstractSyntaxTree::Dump(llvm::raw_ostream &OS) const { }
+void AbstractSyntaxTree::Dump(llvm::raw_ostream &OS) const {
+  AbstractSyntaxTreePrinter Printer(*this, OS);
+  Printer.Visit();
+}
 
 void AbstractSyntaxTree::View() const {
   llvm::ViewGraph(this, "abstract-syntax-tree");
