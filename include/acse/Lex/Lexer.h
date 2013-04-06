@@ -147,6 +147,18 @@ public:
     return Srcs;
   }
 
+  llvm::SMLoc GetCurrentLoc() const {
+    // No cached tokens. Location must be build from raw pointer.
+    if(CachedTokens.empty())
+      return llvm::SMLoc::getFromPointer(Start.data());
+
+    // Otherwise, there is at least a token in the cache.
+    const Token *Cur = CachedTokens.begin();
+
+    // Current location is the token start location.
+    return Cur->GetLocation();
+  }
+
 private:
   bool ScanToken() {
     // Try scan a comment. If it should not be ignored, then it acts like an

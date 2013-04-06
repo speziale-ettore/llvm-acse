@@ -37,13 +37,22 @@ bool Parser::Run() {
 // var_declarations: non_empty_var_declarations
 //                 | empty
 VarDeclarationsAST *Parser::ParseVarDeclarations() {
-  // We have parsed a non-empty var declaration list: propagate.
-  if(NonEmptyVarDeclarationsAST *VarDecls = ParseNonEmptyVarDeclarations())
-    return new VarDeclarationsAST(VarDecls);
+  VarDeclarationsAST *VarDecls = 0;
 
-  // Nothing have been parsed, but that is allowed by the parser.
-  else
-    return new VarDeclarationsAST(new EmptyAST());
+  // LL parsing: by checking the next character we know which alternative should
+  // be chosen. In that case, we should check for tokens defining types.
+  if(llvm::dyn_cast<IntTok>(Lex.Peek(0))) {
+    if(NonEmptyVarDeclarationsAST *NonEmpty = ParseNonEmptyVarDeclarations())
+      VarDecls = new VarDeclarationsAST(NonEmpty);
+    else
+      ReportError(ExpectedVarDeclarations, Lex.GetCurrentLoc());
+
+  // Nothing to parse, but that is allowed by the language.
+  } else {
+    VarDecls = new VarDeclarationsAST(new EmptyAST());
+  }
+
+  return VarDecls;
 }
 
 // non_empty_var_declarations: var_declaration non_empty_var_declarations
@@ -88,13 +97,13 @@ VarDeclarationAST *Parser::ParseVarDeclaration() {
   // Failed to parse a declaration_list; we are sure this is an error in the
   // input stream -- signal it to the user.
   if(!DeclList) {
-    ReportError(ExpectedDeclarationList, Type->GetEndLoc());
+    ReportError(ExpectedDeclarationList, Lex.GetCurrentLoc());
     return 0;
   }
 
   // Terminator not found: this is an error.
   if(!llvm::dyn_cast_or_null<SemiColonTok>(Lex.Peek(0))) {
-    ReportError(DeclarationListMustEndWithSemiColon, DeclList->GetEndLoc());
+    ReportError(DeclarationListMustEndWithSemiColon, Lex.GetCurrentLoc());
     return 0;
   }
 
@@ -128,7 +137,7 @@ DeclarationListAST *Parser::ParseDeclarationList() {
     if(DeclarationAST *Decl = ParseDeclaration())
       Stack.push_back(std::make_pair(Decl, static_cast<CommaAST *>(0)));
     else
-      ReportError(ExpectedDeclaration, Comma->GetEndLoc());
+      ReportError(ExpectedDeclaration, Lex.GetCurrentLoc());
   }
 
   DeclarationListAST *Decls = 0;
@@ -186,7 +195,7 @@ ScalarDeclarationAST *Parser::ParseScalarDeclaration() {
     return new ScalarDeclarationAST(Id.take(), Assign.take(), Init);
 
   // ... but there is not!
-  ReportError(ExpectedInitializer, Assign->GetEndLoc());
+  ReportError(ExpectedInitializer, Lex.GetCurrentLoc());
 
   return 0;
 }
