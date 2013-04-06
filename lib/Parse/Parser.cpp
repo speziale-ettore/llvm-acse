@@ -39,7 +39,7 @@ bool Parser::Run() {
 VarDeclarationsAST *Parser::ParseVarDeclarations() {
   VarDeclarationsAST *VarDecls = 0;
 
-  // LL parsing: by checking the next character we know which alternative should
+  // LL parsing: by checking the current character we know which alternative should
   // be chosen. In that case, we should check for tokens defining types.
   if(llvm::dyn_cast<IntTok>(Lex.Peek(0))) {
     if(NonEmptyVarDeclarationsAST *NonEmpty = ParseNonEmptyVarDeclarations())
@@ -157,7 +157,7 @@ DeclarationListAST *Parser::ParseDeclarationList() {
 // declaration: scalar_declaration
 //            | array_declaration
 DeclarationAST *Parser::ParseDeclaration() {
-  // If the next token is not a '[', we must parse a scalar declaration.
+  // If the next-next token is not a '[', we must parse a scalar declaration.
   if(!llvm::dyn_cast_or_null<LSquareTok>(Lex.Peek(1))) {
     if(ScalarDeclarationAST *Decl = ParseScalarDeclaration())
       return new DeclarationAST(Decl);
