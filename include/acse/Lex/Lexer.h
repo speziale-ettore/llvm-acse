@@ -99,37 +99,29 @@ public:
   // most of the time, the number of peek operations is lesser than the number
   // of other operations. Moreover, when we are going to perform a peek, we
   // usually look at the character following the current one.
-  //
-  // Optimize the case when we are going to peek the current token.
   const Token *Peek(unsigned N = 1) {
-    // Try to scan at least a token -- needed to get a valid iterator.
-    if(CachedTokens.empty() && !ScanToken())
-      return 0;
-
-    // We are going to peek the current token: common operation -- optimize.
-    if(N == 0)
+    // The cache contains enough elements to fulfill the request.
+    if(N < CachedTokens.size())
       return CachedTokens.begin();
 
-    unsigned I = 1, // Next token to visit.
-             E = N; // Index of the token to peek.
+    unsigned I, E;
 
-    llvm::ilist<Token>::const_iterator J = CachedTokens.begin(),
-                                       F = CachedTokens.end();
-
-    // Advance the iterator until either we reach the token to peek or the end
-    // of the list.
-    for(; I != E && J != F; ++I, ++J)
+    // Otherwise, try reading the needed tokens ...
+    for(I = CachedTokens.size(), E = N + 1; I != E && ScanToken(); ++I)
       ;
 
-    // Try to scan more tokens in order to reach the index of the token to peek.
-    // Since the scanning routine modifies the list after the element referenced
-    // by 'I', the iterator is still valid: advance it without any problems.
-    for(; I != E && ScanToken(); ++I, ++J)
+    // ... but some tokens are missing!
+    if(I != E)
+      return 0;
+
+    llvm::ilist<Token>::const_iterator J = CachedTokens.begin();
+
+    // Now, since the llvm::ilist iterator is not a random access iterator, we
+    // must advance it using an explicit loop.
+    for(I = 0, E = N; I != E; ++I, ++J)
       ;
 
-    // If we have reached the target index and the corresponding element is
-    // inside the list we have successfully peeked the stream.
-    return I == E && J != F ? J : 0;
+    return J;
   }
 
   bool EndOfStream() {
