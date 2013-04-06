@@ -25,5 +25,11 @@ AST(VarDeclaration)
 AST(DeclarationList)
 AST(Declaration)
 AST(ScalarDeclaration)
+AST(ArrayDeclaration)
 AST(Type)
+
+// Non-terminal rule ASTs: initializers.
+AST(ArrayInitializer)
+AST(ScalarInitializer)
+AST(InitializerList)
 AST(Initializer)

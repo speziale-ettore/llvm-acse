@@ -100,6 +100,10 @@ private:
   ScalarDeclarationAST *ParseScalarDeclaration();
   ArrayDeclarationAST *ParseArrayDeclaration();
   TypeAST *ParseType();
+
+  ScalarInitializerAST *ParseScalarInitializer();
+  ArrayInitializerAST *ParseArrayInitializer();
+  InitializerListAST *ParseInitializerList();
   InitializerAST *ParseInitializer();
 
   StatementsAST *ParseStatements();

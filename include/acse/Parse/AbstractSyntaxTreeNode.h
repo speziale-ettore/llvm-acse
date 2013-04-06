@@ -259,7 +259,10 @@ protected:
   AbstractSyntaxTreeNode(Id Identifier,
                          AbstractSyntaxTreeNode *T0 = 0,
                          AbstractSyntaxTreeNode *T1 = 0,
-                         AbstractSyntaxTreeNode *T2 = 0)
+                         AbstractSyntaxTreeNode *T2 = 0,
+                         AbstractSyntaxTreeNode *T3 = 0,
+                         AbstractSyntaxTreeNode *T4 = 0,
+                         AbstractSyntaxTreeNode *T5 = 0)
     : MyIdentifier(Identifier) {
     NodeDataPtr Ptr;
 
@@ -272,6 +275,9 @@ protected:
     TREE_INSERT(T0)
     TREE_INSERT(T1)
     TREE_INSERT(T2)
+    TREE_INSERT(T3)
+    TREE_INSERT(T4)
+    TREE_INSERT(T5)
 
     #undef TREE_INSERT
   }
@@ -545,6 +551,44 @@ public:
   InitializerAST(NumberAST *N) : AbstractSyntaxTreeNode(Initializer, N) { }
 };
 
+// initializer_list
+//   : initializer *Comma* initializer_list
+//   | initializer
+class InitializerListAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == InitializerList;
+  }
+
+public:
+  InitializerListAST(InitializerAST *Init,
+                     CommaAST *Comma,
+                     InitializerListAST *InitList)
+    : AbstractSyntaxTreeNode(InitializerList, Init, Comma, InitList) { }
+};
+
+class ScalarInitializerAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == ScalarInitializer;
+  }
+};
+
+// array_initializer
+//   : *LBrace* initializer_list *RBrace*
+class ArrayInitializerAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == ArrayInitializer;
+  }
+
+public:
+  ArrayInitializerAST(LBraceAST *Open,
+                      InitializerListAST *List,
+                      RBraceAST *Closed)
+    : AbstractSyntaxTreeNode(ArrayInitializer, Open, List, Closed) { }
+};
+
 // type
 //   : *Int*
 class TypeAST : public AbstractSyntaxTreeNode {
@@ -557,7 +601,53 @@ public:
   TypeAST(IntAST *Int) : AbstractSyntaxTreeNode(Type, Int) { }
 };
 
-class ArrayDeclarationAST : public AbstractSyntaxTreeNode { };
+// array_declaration
+//   : *Identifier* *LSquare* *Number* *RSquare*
+//   | *Identifier* *LSquare* *Number* *RSquare* *Assign* initializer_list
+//   | *Identifier* *LSquare* *RSquare* *Assign* initializer_list
+class ArrayDeclarationAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == ArrayDeclaration;
+  }
+
+public:
+  ArrayDeclarationAST(IdentifierAST *Id,
+                      LSquareAST *LSquare,
+                      NumberAST *Size,
+                      RSquareAST *RSquare)
+    : AbstractSyntaxTreeNode(ArrayDeclaration,
+                             Id,
+                             LSquare,
+                             Size,
+                             RSquare) { }
+
+  ArrayDeclarationAST(IdentifierAST *Id,
+                      LSquareAST *LSquare,
+                      NumberAST *Size,
+                      RSquareAST *RSquare,
+                      AssignAST *Assign,
+                      ArrayInitializerAST *Init)
+    : AbstractSyntaxTreeNode(ArrayDeclaration,
+                             Id,
+                             LSquare,
+                             Size,
+                             RSquare,
+                             Assign,
+                             Init) { }
+
+  ArrayDeclarationAST(IdentifierAST *Id,
+                      LSquareAST *LSquare,
+                      RSquareAST *RSquare,
+                      AssignAST *Assign,
+                      ArrayInitializerAST *Init)
+    : AbstractSyntaxTreeNode(ArrayDeclaration,
+                             Id,
+                             LSquare,
+                             RSquare,
+                             Assign,
+                             Init) { }
+};
 
 // scalar_declaration
 //   : *Identifier*

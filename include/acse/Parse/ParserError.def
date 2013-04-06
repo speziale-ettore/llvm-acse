@@ -7,9 +7,16 @@
 //
 //===----------------------------------------------------------------------===//
 
-ERROR(ExpectedVarDeclarations, "expected var declarations")
 ERROR(DeclarationListMustEndWithSemiColon, "declaration list must ends with "
                                            "semicolon")
+ERROR(ExpectedArraySize, "expected array size")
 ERROR(ExpectedDeclaration, "expected declaration")
 ERROR(ExpectedDeclarationList, "expected declaration list")
+ERROR(ExpectedIdentifier, "expected identifier")
 ERROR(ExpectedInitializer, "expected initializer")
+ERROR(ExpectedInitializerList, "expected initializer list")
+ERROR(ExpectedLBrace, "expected '{'")
+ERROR(ExpectedRBrace, "expected '}'")
+ERROR(ExpectedLSquare, "expected '['")
+ERROR(ExpectedRSquare, "expected ']'")
+ERROR(ExpectedVarDeclarations, "expected var declarations")

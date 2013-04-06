@@ -207,7 +207,89 @@ ScalarDeclarationAST *Parser::ParseScalarDeclaration() {
   return 0;
 }
 
+// array_declaration
+//   : *Identifier* *LSquare* *Number* *RSquare*
+//   | *Identifier* *LSquare* *Number* *RSquare* *Assign* array_initializer
+//   | *Identifier* *LSquare* *RSquare* *Assign* array_initializer
 ArrayDeclarationAST *Parser::ParseArrayDeclaration() {
+  llvm::OwningPtr<IdentifierAST> Id;
+  llvm::OwningPtr<LSquareAST> OpenSquare;
+  llvm::OwningPtr<NumberAST> Size;
+  llvm::OwningPtr<RSquareAST> ClosedSquare;
+  llvm::OwningPtr<AssignAST> Assign;
+
+  // First token must be an identifier.
+  if(!llvm::dyn_cast_or_null<IdentifierTok>(Lex.Peek(0))) {
+    ReportError(ExpectedIdentifier, Lex.GetCurrentLoc());
+    return 0;
+  }
+
+  Id.reset(new IdentifierAST(Lex.TakeAs<IdentifierTok>()));
+
+  // Then there should be the first bracket.
+  if(!llvm::dyn_cast_or_null<LSquareTok>(Lex.Peek(0))) {
+    ReportError(ExpectedLSquare, Lex.GetCurrentLoc());
+    return 0;
+  }
+
+  OpenSquare.reset(new LSquareAST(Lex.TakeAs<LSquareTok>()));
+
+  // The array size is explicitly specified.
+  if(llvm::dyn_cast_or_null<NumberTok>(Lex.Peek(0)))
+    Size.reset(new NumberAST(Lex.TakeAs<NumberTok>()));
+
+  // Now we expect a closed bracket.
+  if(!llvm::dyn_cast_or_null<RSquareTok>(Lex.Peek(0))) {
+    ReportError(ExpectedRSquare, Lex.GetCurrentLoc());
+    return 0;
+  }
+
+  ClosedSquare.reset(new RSquareAST(Lex.TakeAs<RSquareTok>()));
+
+  // Assignment token is not found: explicit initializer is missing. Please
+  // notice that the size of the array must be specified, otherwise we cannot
+  // compute at compile-time the size of the array.
+  //
+  // Deferring the check now allows to emit a more meaningful error message.
+  // Indeed, an automatically generated parser will detect the missing
+  // initialized instead of the missing size, so the error message can be a
+  // little-bit misleading.
+  if(!llvm::dyn_cast_or_null<AssignTok>(Lex.Peek(0))) {
+    if(!Size) {
+      ReportError(ExpectedArraySize, OpenSquare->GetStartLoc());
+      return 0;
+    }
+
+    return new ArrayDeclarationAST(Id.take(),
+                                   OpenSquare.take(),
+                                   Size.take(),
+                                   ClosedSquare.take());
+  }
+
+  Assign.reset(new AssignAST(Lex.TakeAs<AssignTok>()));
+
+  // Initializer found. In real compiler, the length of the initializer list
+  // must be compared with the size of the array. However, it is a semantic
+  // action, and this is a teaching compiler, so I preferred to do that later
+  // in order to keep syntactic and semantic analysis clearly separated.
+  if(ArrayInitializerAST *Init = ParseArrayInitializer()) {
+    if(Size)
+      return new ArrayDeclarationAST(Id.take(),
+                                     OpenSquare.take(),
+                                     Size.take(),
+                                     ClosedSquare.take(),
+                                     Assign.take(),
+                                     Init);
+    else
+      return new ArrayDeclarationAST(Id.take(),
+                                     OpenSquare.take(),
+                                     ClosedSquare.take(),
+                                     Assign.take(),
+                                     Init);
+  }
+
+  ReportError(ExpectedInitializer, Lex.GetCurrentLoc());
+
   return 0;
 }
 
@@ -220,6 +302,93 @@ TypeAST *Parser::ParseType() {
     Type = new TypeAST(new IntAST(Lex.TakeAs<IntTok>()));
 
   return Type;
+}
+
+// TODO: redirect scalar initializer here.
+ScalarInitializerAST *Parser::ParseScalarInitializer() {
+  return 0;
+}
+
+// array_initializer
+//   : *LBrace* initializer_list *RBrace*
+ArrayInitializerAST *Parser::ParseArrayInitializer() {
+  llvm::OwningPtr<LBraceAST> OpenBrace;
+  llvm::OwningPtr<InitializerListAST> Init;
+  llvm::OwningPtr<RBraceAST> ClosedBrace;
+
+  // First token must be an open brace ...
+  if(!llvm::dyn_cast_or_null<LBraceTok>(Lex.Peek(0))) {
+    ReportError(ExpectedLBrace, Lex.GetCurrentLoc());
+    return 0;
+  }
+
+  OpenBrace.reset(new LBraceAST(Lex.TakeAs<LBraceTok>()));
+
+  // ... followed by a list of initializers ...
+  if(InitializerListAST *List = ParseInitializerList()) {
+    Init.reset(List);
+
+  } else {
+    ReportError(ExpectedInitializerList, Lex.GetCurrentLoc());
+    return 0;
+  }
+
+  // ... and, at last, a closed brace ends.
+  if(!llvm::dyn_cast_or_null<RBraceTok>(Lex.Peek(0))) {
+    ReportError(ExpectedRBrace, Lex.GetCurrentLoc());
+    return 0;
+  }
+
+  ClosedBrace.reset(new RBraceAST(Lex.TakeAs<RBraceTok>()));
+
+  return new ArrayInitializerAST(OpenBrace.take(),
+                                 Init.take(),
+                                 ClosedBrace.take());
+}
+
+// initializer_list
+//   : initializer *Comma* initializer_list
+//   | initializer
+InitializerListAST *Parser::ParseInitializerList() {
+  llvm::SmallVector<std::pair<InitializerAST *, CommaAST *>, 4> Stack;
+
+  // We should parse at least one initializer.
+  if(InitializerAST *Init = ParseInitializer()) {
+    Stack.push_back(std::make_pair(Init, static_cast<CommaAST *>(0)));
+
+  } else {
+    ReportError(ExpectedInitializer, Lex.GetCurrentLoc());
+    return 0;
+  }
+
+  // If current token is a comma, then we expect to parse at least another
+  // initialization. Please notice that the comma is bound to the previously
+  // parsed declaration, not the one we are going to parse.
+  while(llvm::dyn_cast_or_null<CommaTok>(Lex.Peek(0))) {
+    CommaAST *Comma = new CommaAST(Lex.TakeAs<CommaTok>());
+
+    std::pair<InitializerAST *, CommaAST *> &Prev = Stack.back();
+    Prev.second = Comma;
+
+    // We parsed a comma, so there must be an initializer.
+    if(InitializerAST *Init = ParseInitializer())
+      Stack.push_back(std::make_pair(Init, static_cast<CommaAST *>(0)));
+    else
+      ReportError(ExpectedInitializer, Lex.GetCurrentLoc());
+  }
+
+  InitializerListAST *Inits = 0;
+
+  // We reach the innermost parser -- the last initializer. Simulate returning
+  // from LL recursive calls by popping elements from the stack and build the
+  // tree bottom-up.
+  while(!Stack.empty()) {
+    std::pair<InitializerAST *, CommaAST *> &Cur = Stack.back();
+    Inits = new InitializerListAST(Cur.first, Cur.second, Inits);
+    Stack.pop_back();
+  }
+
+  return Inits;
 }
 
 // initializer
