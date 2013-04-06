@@ -567,11 +567,17 @@ public:
     : AbstractSyntaxTreeNode(InitializerList, Init, Comma, InitList) { }
 };
 
+// scalar_initializer
+//   : initializer
 class ScalarInitializerAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == ScalarInitializer;
   }
+
+public:
+  ScalarInitializerAST(InitializerAST *Init)
+    : AbstractSyntaxTreeNode(ScalarInitializer, Init) { }
 };
 
 // array_initializer
@@ -651,7 +657,7 @@ public:
 
 // scalar_declaration
 //   : *Identifier*
-//   | *Identifier* *Assign* initializer
+//   | *Identifier* *Assign* scalar_initializer
 class ScalarDeclarationAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
@@ -664,7 +670,7 @@ public:
 
   ScalarDeclarationAST(IdentifierAST *Id,
                        AssignAST *Assign,
-                       InitializerAST *Init)
+                       ScalarInitializerAST *Init)
     : AbstractSyntaxTreeNode(ScalarDeclaration, Id, Assign, Init) { }
 };
 

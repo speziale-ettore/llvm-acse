@@ -180,7 +180,7 @@ DeclarationAST *Parser::ParseDeclaration() {
 
 // scalar_declaration
 //   : *Identifier*
-//   | *Identifier* *Assign* initializer
+//   | *Identifier* *Assign* scalar_initializer
 ScalarDeclarationAST *Parser::ParseScalarDeclaration() {
   llvm::OwningPtr<IdentifierAST> Id;
   llvm::OwningPtr<AssignAST> Assign;
@@ -197,8 +197,8 @@ ScalarDeclarationAST *Parser::ParseScalarDeclaration() {
 
   Assign.reset(new AssignAST(Lex.TakeAs<AssignTok>()));
 
-  // Otherwise there must be an initializer list ...
-  if(InitializerAST *Init = ParseInitializer())
+  // Otherwise there must be an initializer ...
+  if(ScalarInitializerAST *Init = ParseScalarInitializer())
     return new ScalarDeclarationAST(Id.take(), Assign.take(), Init);
 
   // ... but there is not!
@@ -304,11 +304,6 @@ TypeAST *Parser::ParseType() {
   return Type;
 }
 
-// TODO: redirect scalar initializer here.
-ScalarInitializerAST *Parser::ParseScalarInitializer() {
-  return 0;
-}
-
 // array_initializer
 //   : *LBrace* initializer_list *RBrace*
 ArrayInitializerAST *Parser::ParseArrayInitializer() {
@@ -344,6 +339,18 @@ ArrayInitializerAST *Parser::ParseArrayInitializer() {
   return new ArrayInitializerAST(OpenBrace.take(),
                                  Init.take(),
                                  ClosedBrace.take());
+}
+
+// scalar_initializer
+//   : initializer
+ScalarInitializerAST *Parser::ParseScalarInitializer() {
+  ScalarInitializerAST *Init = 0;
+
+  // Just for symmetry with respect to the array initializer.
+  if(InitializerAST *Init = ParseInitializer())
+    return new ScalarInitializerAST(Init);
+
+  return Init;
 }
 
 // initializer_list
@@ -397,9 +404,8 @@ InitializerAST *Parser::ParseInitializer() {
   InitializerAST *Init = 0;
 
   // Actually this parser is just a wrapper of a number. I decided to introduce
-  // a custom non-terminal rule for two reasons: 1) maybe in the future I will
-  // allow initialization with non-constant values, and 2) for symmetry with
-  // respect to the array initialization list.
+  // a custom non-terminal rule because maybe in the future I will allow
+  // initialization with non-constant values.
   if(llvm::dyn_cast_or_null<NumberTok>(Lex.Peek(0)))
     Init = new InitializerAST(new NumberAST(Lex.TakeAs<NumberTok>()));
 
