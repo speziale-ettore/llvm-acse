@@ -11,7 +11,8 @@
 
 using namespace acse;
 
-// program: var_declarations statements
+// program
+//   : var_declarations statements
 bool Parser::Run() {
   llvm::OwningPtr<VarDeclarationsAST> VarDecls;
   llvm::OwningPtr<StatementsAST> Stmts;
@@ -34,8 +35,9 @@ bool Parser::Run() {
   return Success();
 }
 
-// var_declarations: non_empty_var_declarations
-//                 | empty
+// var_declarations
+//   : non_empty_var_declarations
+//   | empty
 VarDeclarationsAST *Parser::ParseVarDeclarations() {
   VarDeclarationsAST *VarDecls = 0;
 
@@ -55,8 +57,9 @@ VarDeclarationsAST *Parser::ParseVarDeclarations() {
   return VarDecls;
 }
 
-// non_empty_var_declarations: var_declaration non_empty_var_declarations
-//                           | var_declaration
+// non_empty_var_declarations
+//   : var_declaration non_empty_var_declarations
+//   | var_declaration
 NonEmptyVarDeclarationsAST *Parser::ParseNonEmptyVarDeclarations() {
   llvm::SmallVector<VarDeclarationAST *, 4> Stack;
 
@@ -77,7 +80,8 @@ NonEmptyVarDeclarationsAST *Parser::ParseNonEmptyVarDeclarations() {
   return VarDecls;
 }
 
-// var_declaration: type declaration_list *SemiColon*
+// var_declaration
+//   : type declaration_list *SemiColon*
 VarDeclarationAST *Parser::ParseVarDeclaration() {
   llvm::OwningPtr<TypeAST> Type;
   llvm::OwningPtr<DeclarationListAST> DeclList;
@@ -113,8 +117,9 @@ VarDeclarationAST *Parser::ParseVarDeclaration() {
   return new VarDeclarationAST(Type.take(), DeclList.take(), SemiColon.take());
 }
 
-// declaration_list: declaration *Comma* declaration_list
-//                 | declaration
+// declaration_list
+//   : declaration *Comma* declaration_list
+//   | declaration
 DeclarationListAST *Parser::ParseDeclarationList() {
   llvm::SmallVector<std::pair<DeclarationAST *, CommaAST *>, 4> Stack;
 
@@ -154,8 +159,9 @@ DeclarationListAST *Parser::ParseDeclarationList() {
   return Decls;
 }
 
-// declaration: scalar_declaration
-//            | array_declaration
+// declaration
+//   : scalar_declaration
+//   | array_declaration
 DeclarationAST *Parser::ParseDeclaration() {
   // If the next-next token is not a '[', we must parse a scalar declaration.
   if(!llvm::dyn_cast_or_null<LSquareTok>(Lex.Peek(1))) {
@@ -172,8 +178,9 @@ DeclarationAST *Parser::ParseDeclaration() {
   return 0;
 }
 
-// scalar_declaration: *Identifier*
-//                   | *Identifier* *Assign* initializer
+// scalar_declaration
+//   : *Identifier*
+//   | *Identifier* *Assign* initializer
 ScalarDeclarationAST *Parser::ParseScalarDeclaration() {
   llvm::OwningPtr<IdentifierAST> Id;
   llvm::OwningPtr<AssignAST> Assign;
@@ -204,7 +211,8 @@ ArrayDeclarationAST *Parser::ParseArrayDeclaration() {
   return 0;
 }
 
-// type: *Int*
+// type
+//   : *Int*
 TypeAST *Parser::ParseType() {
   TypeAST *Type = 0;
 
@@ -214,7 +222,8 @@ TypeAST *Parser::ParseType() {
   return Type;
 }
 
-// initializer: *Number*
+// initializer
+//   : *Number*
 InitializerAST *Parser::ParseInitializer() {
   InitializerAST *Init = 0;
 

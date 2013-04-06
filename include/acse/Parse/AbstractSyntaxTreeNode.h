@@ -533,7 +533,8 @@ public:
 
 class StatementsAST : public AbstractSyntaxTreeNode { };
 
-// initializer: *Number*
+// initializer
+//   : *Number*
 class InitializerAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
@@ -544,7 +545,8 @@ public:
   InitializerAST(NumberAST *N) : AbstractSyntaxTreeNode(Initializer, N) { }
 };
 
-// type: *Int*
+// type
+//   : *Int*
 class TypeAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
@@ -557,8 +559,9 @@ public:
 
 class ArrayDeclarationAST : public AbstractSyntaxTreeNode { };
 
-// scalar_declaration: *Identifier*
-//                   | *Identifier* *Assign* initializer
+// scalar_declaration
+//   : *Identifier*
+//   | *Identifier* *Assign* initializer
 class ScalarDeclarationAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
@@ -575,8 +578,9 @@ public:
     : AbstractSyntaxTreeNode(ScalarDeclaration, Id, Assign, Init) { }
 };
 
-// declaration: scalar_declaration
-//            | array_declaration
+// declaration
+//   : scalar_declaration
+//   | array_declaration
 class DeclarationAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
@@ -591,8 +595,9 @@ public:
     : AbstractSyntaxTreeNode(Declaration, Decl) { }
 };
 
-// declaration_list: declaration *Comma* declaration_list
-//                 | declaration
+// declaration_list
+//   : declaration *Comma* declaration_list
+//   | declaration
 class DeclarationListAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
@@ -606,7 +611,8 @@ public:
     : AbstractSyntaxTreeNode(DeclarationList, Decl, Comma, DeclList) { }
 };
 
-// var_declaration: *Identifier* declaration_list *SemiColon*
+// var_declaration
+//   : *Identifier* declaration_list *SemiColon*
 class VarDeclarationAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
@@ -620,8 +626,9 @@ public:
     : AbstractSyntaxTreeNode(VarDeclaration, Type, DeclList, Semi) { }
 };
 
-// non_empty_var_declarations: var_declaration non_empty_var_declarations
-//                           | var_declaration
+// non_empty_var_declarations
+//   : var_declaration non_empty_var_declarations
+//   | var_declaration
 class NonEmptyVarDeclarationsAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
@@ -634,8 +641,9 @@ public:
     : AbstractSyntaxTreeNode(NonEmptyVarDeclarations, VarDecl, VarDecls) { }
 };
 
-// var_declarations: non_empty_var_declarations
-//                 | empty
+// var_declarations
+//   : non_empty_var_declarations
+//   | empty
 class VarDeclarationsAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
@@ -650,7 +658,8 @@ public:
     : AbstractSyntaxTreeNode(VarDeclarations, Eps) { }
 };
 
-// program: var_declarations statements
+// program
+//   : var_declarations statements
 class ProgramAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
