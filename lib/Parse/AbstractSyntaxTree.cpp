@@ -120,9 +120,6 @@ llvm::raw_ostream &acse::operator<<(llvm::raw_ostream &OS,
     break;
   #include "acse/Parse/AbstractSyntaxTreeNode.def"
   #undef AST
-
-  default:
-    OS << "AST-" << static_cast<unsigned>(Identifier);
   }
 
   return OS;

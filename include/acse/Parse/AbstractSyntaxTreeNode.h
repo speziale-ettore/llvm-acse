@@ -69,10 +69,6 @@ namespace acse {
 class AbstractSyntaxTreeNode {
 public:
   enum Id {
-    // Special ASTs, representing the null expansion. Corresponding class is
-    // EmptyAST.
-    Empty,
-
     // Every parsed entity is represented by a different subclass of
     // AbstractSyntaxTreeNode. Every entity X is represented by class XAST.
     #define AST(I) \

@@ -1,0 +1,2 @@
+
+// RUN: acse-parse %s

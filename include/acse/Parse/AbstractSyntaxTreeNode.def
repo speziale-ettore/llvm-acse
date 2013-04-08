@@ -7,6 +7,9 @@
 //
 //===----------------------------------------------------------------------===//
 
+// Represents the empty production in the AST.
+AST(Empty)
+
 // Each token is represented by a different AST.
 #define TOKEN(I) \
 AST(I)

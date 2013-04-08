@@ -45,7 +45,7 @@ VarDeclarationsAST *Parser::ParseVarDeclarations() {
   // should be chosen. In that case, we should check for tokens defining types.
   //
   // For readability, check the second alternative first.
-  if(!llvm::dyn_cast<IntTok>(Lex.Peek(0)))
+  if(!llvm::dyn_cast_or_null<IntTok>(Lex.Peek(0)))
     VarDecls = new VarDeclarationsAST(new EmptyAST());
 
   // First alternative: there are some declarations.
