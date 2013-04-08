@@ -41,18 +41,16 @@ bool Parser::Run() {
 VarDeclarationsAST *Parser::ParseVarDeclarations() {
   VarDeclarationsAST *VarDecls = 0;
 
-  // LL parsing: by checking the current character we know which alternative should
-  // be chosen. In that case, we should check for tokens defining types.
-  if(llvm::dyn_cast<IntTok>(Lex.Peek(0))) {
-    if(NonEmptyVarDeclarationsAST *NonEmpty = ParseNonEmptyVarDeclarations())
-      VarDecls = new VarDeclarationsAST(NonEmpty);
-    else
-      ReportError(ExpectedVarDeclarations, Lex.GetCurrentLoc());
-
-  // Nothing to parse, but that is allowed by the language.
-  } else {
+  // LL parsing: by checking the current character we know which alternative
+  // should be chosen. In that case, we should check for tokens defining types.
+  //
+  // For readability, check the second alternative first.
+  if(!llvm::dyn_cast<IntTok>(Lex.Peek(0)))
     VarDecls = new VarDeclarationsAST(new EmptyAST());
-  }
+
+  // First alternative: there are some declarations.
+  else if(NonEmptyVarDeclarationsAST *NonEmpty = ParseNonEmptyVarDeclarations())
+    VarDecls = new VarDeclarationsAST(NonEmpty);
 
   return VarDecls;
 }
@@ -98,12 +96,9 @@ VarDeclarationAST *Parser::ParseVarDeclaration() {
   // declaration_list.
   DeclList.reset(ParseDeclarationList());
 
-  // Failed to parse a declaration_list; we are sure this is an error in the
-  // input stream -- signal it to the user.
-  if(!DeclList) {
-    ReportError(ExpectedDeclarationList, Lex.GetCurrentLoc());
+  // Failed to parse a declaration_list. This is an error in the input stream.
+  if(!DeclList)
     return 0;
-  }
 
   // Terminator not found: this is an error.
   if(!llvm::dyn_cast_or_null<SemiColonTok>(Lex.Peek(0))) {
@@ -141,8 +136,6 @@ DeclarationListAST *Parser::ParseDeclarationList() {
     // We parsed a comma, so there must be a declaration.
     if(DeclarationAST *Decl = ParseDeclaration())
       Stack.push_back(std::make_pair(Decl, static_cast<CommaAST *>(0)));
-    else
-      ReportError(ExpectedDeclaration, Lex.GetCurrentLoc());
   }
 
   DeclarationListAST *Decls = 0;
@@ -197,12 +190,9 @@ ScalarDeclarationAST *Parser::ParseScalarDeclaration() {
 
   Assign.reset(new AssignAST(Lex.TakeAs<AssignTok>()));
 
-  // Otherwise there must be an initializer ...
+  // Otherwise there must be an initializer.
   if(ScalarInitializerAST *Init = ParseScalarInitializer())
     return new ScalarDeclarationAST(Id.take(), Assign.take(), Init);
-
-  // ... but there is not!
-  ReportError(ExpectedInitializer, Lex.GetCurrentLoc());
 
   return 0;
 }
@@ -288,8 +278,6 @@ ArrayDeclarationAST *Parser::ParseArrayDeclaration() {
                                      Init);
   }
 
-  ReportError(ExpectedInitializer, Lex.GetCurrentLoc());
-
   return 0;
 }
 
@@ -320,13 +308,10 @@ ArrayInitializerAST *Parser::ParseArrayInitializer() {
   OpenBrace.reset(new LBraceAST(Lex.TakeAs<LBraceTok>()));
 
   // ... followed by a list of initializers ...
-  if(InitializerListAST *List = ParseInitializerList()) {
+  if(InitializerListAST *List = ParseInitializerList())
     Init.reset(List);
-
-  } else {
-    ReportError(ExpectedInitializerList, Lex.GetCurrentLoc());
+  else
     return 0;
-  }
 
   // ... and, at last, a closed brace ends.
   if(!llvm::dyn_cast_or_null<RBraceTok>(Lex.Peek(0))) {
@@ -360,13 +345,10 @@ InitializerListAST *Parser::ParseInitializerList() {
   llvm::SmallVector<std::pair<InitializerAST *, CommaAST *>, 4> Stack;
 
   // We should parse at least one initializer.
-  if(InitializerAST *Init = ParseInitializer()) {
+  if(InitializerAST *Init = ParseInitializer())
     Stack.push_back(std::make_pair(Init, static_cast<CommaAST *>(0)));
-
-  } else {
-    ReportError(ExpectedInitializer, Lex.GetCurrentLoc());
+  else
     return 0;
-  }
 
   // If current token is a comma, then we expect to parse at least another
   // initialization. Please notice that the comma is bound to the previously
@@ -380,8 +362,6 @@ InitializerListAST *Parser::ParseInitializerList() {
     // We parsed a comma, so there must be an initializer.
     if(InitializerAST *Init = ParseInitializer())
       Stack.push_back(std::make_pair(Init, static_cast<CommaAST *>(0)));
-    else
-      ReportError(ExpectedInitializer, Lex.GetCurrentLoc());
   }
 
   InitializerListAST *Inits = 0;
