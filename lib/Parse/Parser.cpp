@@ -392,7 +392,117 @@ InitializerAST *Parser::ParseInitializer() {
   return Init;
 }
 
+// statements
+//   : statement statements
+//   | statement
 StatementsAST *Parser::ParseStatements() {
+  llvm::SmallVector<StatementAST *, 4> Stack;
+
+  // Iterative version of LL right recursive calls.
+  while(StatementAST *Stmt = ParseStatement())
+    Stack.push_back(Stmt);
+
+  StatementsAST *Stmts = 0;
+
+  // We reach the innermost parser -- the last statement. Simulate returning
+  // from LL recursive calls by popping elements from the stack and build the
+  // abstract syntax tree.
+  while(!Stack.empty()) {
+    Stmts = new StatementsAST(Stack.back(), Stmts);
+    Stack.pop_back();
+  }
+
+  return Stmts;
+}
+
+// statement
+//   : assign_statement *SemiColon*
+//   | read_write_statement *SemiColon*
+//   | null_statement *SemiColon*
+//   | control_statement
+StatementAST *Parser::ParseStatement() {
+  const Token *CurTok = Lex.Peek(0);
+
+  // No token available, hence nothing to parse.
+  if(!CurTok)
+    return 0;
+
+  StatementAST *Stmt = 0;
+
+  // Normally, I performed the LL lookup using the llvm::dyn_cast_or_null, but
+  // in this case, since there are a lot of alternatives, I preferred checking
+  // the token id. In this way, I can use a switch statement and write a more
+  // readable code.
+  switch(CurTok->GetId()) {
+
+  // The left hand side of an assignment is always an identifier. Indeed, even
+  // in the case of array assignment, the first token is the name of the array,
+  // that is an identifier.
+  case Token::Identifier: {
+    llvm::OwningPtr<AssignStatementAST> Assign(ParseAssignStatement());
+
+    if(Assign && llvm::dyn_cast_or_null<SemiColonTok>(Lex.Peek(0)))
+      Stmt = new StatementAST(Assign.take(),
+                              new SemiColonAST(Lex.TakeAs<SemiColonTok>()));
+
+    break;
+  }
+
+  // Read and write statements are identified by specific keywords, hence it is
+  // trivial predicting if one of them is expected.
+  case Token::Read:
+  case Token::Write: {
+    llvm::OwningPtr<ReadWriteStatementAST> ReadWrite(ParseReadWriteStatement());
+
+    if(ReadWrite && llvm::dyn_cast_or_null<SemiColonTok>(Lex.Peek(0)))
+      Stmt = new StatementAST(ReadWrite.take(),
+                              new SemiColonAST(Lex.TakeAs<SemiColonTok>()));
+
+    break;
+  }
+
+  // A null statement is represented by nothing, hence we must check for its
+  // following token -- the semicolon -- in order to detect whether we are going
+  // to parse it.
+  case Token::SemiColon:
+    if(NullStatementAST *Null = ParseNullStatement())
+      Stmt = new StatementAST(Null,
+                              new SemiColonAST(Lex.TakeAs<SemiColonTok>()));
+    break;
+
+  // Control statements always start with a keyword: LL check is trivial.
+  case Token::If:
+  case Token::Do:
+  case Token::While:
+    if(ControlStatementAST *Control = ParseControlStatement())
+      Stmt = new StatementAST(Control);
+    break;
+
+  // Current token does not allow to make a choice about which parser to spawn.
+  default:
+    break;
+  }
+
+  return Stmt;
+}
+
+AssignStatementAST *Parser::ParseAssignStatement() {
+  return 0;
+}
+
+ReadWriteStatementAST *Parser::ParseReadWriteStatement() {
+  return 0;
+}
+
+// null_statement
+//   : empty
+NullStatementAST *Parser::ParseNullStatement() {
+  // A null statement simply expands to 0 tokens. I preferred introducing a
+  // custom non-terminal rule to point out that this is a null statement.
+  return new NullStatementAST(new EmptyAST());
+}
+
+ControlStatementAST *Parser::ParseControlStatement() {
   return 0;
 }
 

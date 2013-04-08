@@ -533,7 +533,78 @@ public:
 // Non-terminal rule ASTs.
 //
 
-class StatementsAST : public AbstractSyntaxTreeNode { };
+class AssignStatementAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == AssignStatement;
+  }
+};
+
+class ReadWriteStatementAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == ReadWriteStatement;
+  }
+};
+
+// null_statement
+//   : empty
+class NullStatementAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == NullStatement;
+  }
+
+public:
+  NullStatementAST(EmptyAST *Eps)
+    : AbstractSyntaxTreeNode(NullStatement, Eps) { }
+};
+
+class ControlStatementAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == ControlStatement;
+  }
+};
+
+// statement
+//   : assign_statement *SemiColon*
+//   | read_write_statement *SemiColon*
+//   | null_statement *SemiColon*
+//   | control_statement
+class StatementAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == Statement;
+  }
+
+public:
+  StatementAST(AssignStatementAST *Stmt, SemiColonAST *Semi)
+    : AbstractSyntaxTreeNode(Statement, Stmt, Semi) { }
+
+  StatementAST(ReadWriteStatementAST *Stmt, SemiColonAST *Semi)
+    : AbstractSyntaxTreeNode(Statement, Stmt, Semi) { }
+
+  StatementAST(NullStatementAST *Stmt, SemiColonAST *Semi)
+    : AbstractSyntaxTreeNode(Statement, Stmt, Semi) { }
+
+  StatementAST(ControlStatementAST *Stmt)
+    : AbstractSyntaxTreeNode(Statement, Stmt) { }
+};
+
+// statements
+//   : statement statements
+//   | statement
+class StatementsAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == Statements;
+  }
+
+public:
+  StatementsAST(StatementAST *Stmt, StatementsAST *Stmts)
+    : AbstractSyntaxTreeNode(Statements, Stmt, Stmts) { }
+};
 
 // initializer
 //   : *Number*

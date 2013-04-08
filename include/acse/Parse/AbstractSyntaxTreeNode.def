@@ -36,3 +36,11 @@ AST(ArrayInitializer)
 AST(ScalarInitializer)
 AST(InitializerList)
 AST(Initializer)
+
+// Non-terminal rule ASTs: statements.
+AST(Statements)
+AST(Statement)
+AST(AssignStatement)
+AST(ReadWriteStatement)
+AST(NullStatement)
+AST(ControlStatement)

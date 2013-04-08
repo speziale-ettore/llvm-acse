@@ -107,6 +107,11 @@ private:
   InitializerAST *ParseInitializer();
 
   StatementsAST *ParseStatements();
+  StatementAST *ParseStatement();
+  AssignStatementAST *ParseAssignStatement();
+  ReadWriteStatementAST *ParseReadWriteStatement();
+  NullStatementAST *ParseNullStatement();
+  ControlStatementAST *ParseControlStatement();
 
   void ReportError(ErrorTy Error, llvm::SMLoc Loc);
 
