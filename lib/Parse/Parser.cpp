@@ -393,22 +393,56 @@ InitializerAST *Parser::ParseInitializer() {
 }
 
 // statements
-//   : statement statements
-//   | statement
+//   : non_empty_statements
+//   | empty
 StatementsAST *Parser::ParseStatements() {
+  const Token *CurTok = Lex.Peek(0);
+
+  // No token available, we reached the end of the stream: empty production.
+  if(!CurTok)
+    return new StatementsAST(new EmptyAST());
+
+  NonEmptyStatementsAST *Stmts;
+
+  // Otherwise, check the current token in order to detect whether we should
+  // parse some statements.
+  switch(CurTok->GetId()) {
+  case Token::Identifier:
+  case Token::Read:
+  case Token::Write:
+  case Token::SemiColon:
+  case Token::If:
+  case Token::Do:
+  case Token::While:
+    Stmts = ParseNonEmptyStatements();
+    break;
+
+  // Invalid look-ahead: error.
+  default:
+    Stmts = 0;
+    break;
+  }
+
+  return Stmts ? new StatementsAST(Stmts) : 0;
+}
+
+// non_empty_statements
+//   : statement non_empty_statements
+//   | statement
+NonEmptyStatementsAST *Parser::ParseNonEmptyStatements() {
   llvm::SmallVector<StatementAST *, 4> Stack;
 
   // Iterative version of LL right recursive calls.
   while(StatementAST *Stmt = ParseStatement())
     Stack.push_back(Stmt);
 
-  StatementsAST *Stmts = 0;
+  NonEmptyStatementsAST *Stmts = 0;
 
   // We reach the innermost parser -- the last statement. Simulate returning
   // from LL recursive calls by popping elements from the stack and build the
   // abstract syntax tree.
   while(!Stack.empty()) {
-    Stmts = new StatementsAST(Stack.back(), Stmts);
+    Stmts = new NonEmptyStatementsAST(Stack.back(), Stmts);
     Stack.pop_back();
   }
 

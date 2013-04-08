@@ -107,7 +107,9 @@ private:
   InitializerAST *ParseInitializer();
 
   StatementsAST *ParseStatements();
+  NonEmptyStatementsAST *ParseNonEmptyStatements();
   StatementAST *ParseStatement();
+
   AssignStatementAST *ParseAssignStatement();
   ReadWriteStatementAST *ParseReadWriteStatement();
   NullStatementAST *ParseNullStatement();

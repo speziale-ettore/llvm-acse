@@ -592,9 +592,23 @@ public:
     : AbstractSyntaxTreeNode(Statement, Stmt) { }
 };
 
-// statements
+// non_empty_statements
 //   : statement statements
 //   | statement
+class NonEmptyStatementsAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == NonEmptyStatements;
+  }
+
+public:
+  NonEmptyStatementsAST(StatementAST *Stmt, NonEmptyStatementsAST *Stmts)
+    : AbstractSyntaxTreeNode(NonEmptyStatements, Stmt, Stmts) { }
+};
+
+// statements
+//   : non_empty_statements
+//   | empty
 class StatementsAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
@@ -602,8 +616,11 @@ public:
   }
 
 public:
-  StatementsAST(StatementAST *Stmt, StatementsAST *Stmts)
-    : AbstractSyntaxTreeNode(Statements, Stmt, Stmts) { }
+  StatementsAST(NonEmptyStatementsAST *Stmts)
+    : AbstractSyntaxTreeNode(Statements, Stmts) { }
+
+  StatementsAST(EmptyAST *Eps)
+    : AbstractSyntaxTreeNode(Statements, Eps) { }
 };
 
 // initializer

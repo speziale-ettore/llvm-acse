@@ -39,7 +39,10 @@ AST(Initializer)
 
 // Non-terminal rule ASTs: statements.
 AST(Statements)
+AST(NonEmptyStatements)
 AST(Statement)
+
+// Non-terminal rule ASTs: statements category.
 AST(AssignStatement)
 AST(ReadWriteStatement)
 AST(NullStatement)
