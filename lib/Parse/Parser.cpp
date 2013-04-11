@@ -55,23 +55,10 @@ VarDeclarationsAST *Parser::ParseVarDeclarations() {
 //   : var_declaration non_empty_var_declarations
 //   | var_declaration
 NonEmptyVarDeclarationsAST *Parser::ParseNonEmptyVarDeclarations() {
-  llvm::SmallVector<VarDeclarationAST *, 4> Stack;
+  typedef NonEmptyVarDeclarationsAST List;
+  typedef VarDeclarationAST Node;
 
-  // Iterative version of recursive descendent calls.
-  while(VarDeclarationAST *VarDecl = ParseVarDeclaration())
-    Stack.push_back(VarDecl);
-
-  NonEmptyVarDeclarationsAST *VarDecls = 0;
-
-  // We reach the innermost parser -- the last declaration in the current line.
-  // Simulate returning from recursive calls by popping elements from the stack
-  // and build the tree.
-  while(!Stack.empty()) {
-    VarDecls = new NonEmptyVarDeclarationsAST(Stack.back(), VarDecls);
-    Stack.pop_back();
-  }
-
-  return VarDecls;
+  return ParseList<List, Node, &Parser::ParseVarDeclaration>();
 }
 
 // var_declaration
@@ -414,23 +401,10 @@ StatementsAST *Parser::ParseStatements() {
 //   : statement non_empty_statements
 //   | statement
 NonEmptyStatementsAST *Parser::ParseNonEmptyStatements() {
-  llvm::SmallVector<StatementAST *, 4> Stack;
+  typedef NonEmptyStatementsAST List;
+  typedef StatementAST Node;
 
-  // Iterative version of right recursive calls.
-  while(StatementAST *Stmt = ParseStatement())
-    Stack.push_back(Stmt);
-
-  NonEmptyStatementsAST *Stmts = 0;
-
-  // We reach the innermost parser -- the last statement. Simulate returning
-  // from recursive calls by popping elements from the stack and build the
-  // abstract syntax tree.
-  while(!Stack.empty()) {
-    Stmts = new NonEmptyStatementsAST(Stack.back(), Stmts);
-    Stack.pop_back();
-  }
-
-  return Stmts;
+  return ParseList<List, Node, &Parser::ParseStatement>();
 }
 
 // statement

@@ -120,6 +120,35 @@ private:
   NullStatementAST *ParseNullStatement();
   ControlStatementAST *ParseControlStatement();
 
+  // Since a lot of things we should parse are lists, I defined this template
+  // function for parsing them. Indeed, the only difference between lists are:
+  //
+  // - ListTy: its type
+  // - NodeTy: the type of its nodes
+  // - NodeParser: the member function used to parse a list element
+  //
+  // I had to use some C++ black magic, but in this way code is much more
+  // readable.
+  template <typename ListTy, typename NodeTy, NodeTy *(Parser::*NodeParser)()>
+  ListTy *ParseList() {
+    llvm::SmallVector<NodeTy *, 4> Stack;
+
+    // Iterative version of recursive descendent calls.
+    while(NodeTy *Node = (this->*NodeParser)())
+      Stack.push_back(Node);
+
+    ListTy *List = 0;
+
+    // We reach the innermost parser. Simulate returning from recursive calls
+    // by popping elements from the stack and build the tree.
+    while(!Stack.empty()) {
+      List = new ListTy(Stack.back(), List);
+      Stack.pop_back();
+    }
+
+    return List;
+  }
+
   void ReportError(ErrorTy Error, llvm::SMLoc Loc);
 
 private:
