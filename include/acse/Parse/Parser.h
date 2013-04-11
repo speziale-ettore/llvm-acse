@@ -149,6 +149,46 @@ private:
     return List;
   }
 
+  template <typename ListTy,
+            typename NodeTy,
+            typename SepTy,
+            NodeTy *(Parser::*NodeParser)()>
+  ListTy *ParseList() {
+    llvm::SmallVector<std::pair<NodeTy *, SepTy *>, 4> Stack;
+
+    // We should parse at least one element.
+    if(NodeTy *Node = (this->*NodeParser)())
+      Stack.push_back(std::make_pair(Node, static_cast<SepTy *>(0)));
+    else
+      return 0;
+
+    // If current token is the separator, then we expect to parse at least
+    // another element. Please notice that the separator is bound to the
+    // previously parsed element, not the one we are going to parse.
+    while(llvm::dyn_cast_or_null<typename SepTy::Token>(Lex.Peek(0))) {
+      SepTy *Sep = new SepTy(Lex.TakeAs<typename SepTy::Token>());
+
+      std::pair<NodeTy *, SepTy *> &Prev = Stack.back();
+      Prev.second = Sep;
+
+      // We parsed a separator, so there must be an element.
+      if(NodeTy *Node = (this->*NodeParser)())
+        Stack.push_back(std::make_pair(Node, static_cast<SepTy *>(0)));
+    }
+
+    ListTy *List = 0;
+
+    // We reach the innermost parser. Simulate returning from recursive calls by
+    // popping elements from the stack and build the tree bottom-up.
+    while(!Stack.empty()) {
+      std::pair<NodeTy *, SepTy *> &Cur = Stack.back();
+      List = new ListTy(Cur.first, Cur.second, List);
+      Stack.pop_back();
+    }
+
+    return List;
+  }
+
   void ReportError(ErrorTy Error, llvm::SMLoc Loc);
 
 private:

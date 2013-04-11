@@ -99,40 +99,11 @@ VarDeclarationAST *Parser::ParseVarDeclaration() {
 //   : declaration *Comma* declaration_list
 //   | declaration
 DeclarationListAST *Parser::ParseDeclarationList() {
-  llvm::SmallVector<std::pair<DeclarationAST *, CommaAST *>, 4> Stack;
+  typedef DeclarationListAST List;
+  typedef DeclarationAST Node;
+  typedef CommaAST Sep;
 
-  // We should parse at least one declaration.
-  if(DeclarationAST *Decl = ParseDeclaration())
-    Stack.push_back(std::make_pair(Decl, static_cast<CommaAST *>(0)));
-  else
-    return 0;
-
-  // If current token is a comma, then we expect to parse at least another
-  // declaration. Please notice that the comma is bound to the previously parsed
-  // declaration, not the one we are going to parse.
-  while(llvm::dyn_cast_or_null<CommaTok>(Lex.Peek(0))) {
-    CommaAST *Comma = new CommaAST(Lex.TakeAs<CommaTok>());
-
-    std::pair<DeclarationAST *, CommaAST *> &Prev = Stack.back();
-    Prev.second = Comma;
-
-    // We parsed a comma, so there must be a declaration.
-    if(DeclarationAST *Decl = ParseDeclaration())
-      Stack.push_back(std::make_pair(Decl, static_cast<CommaAST *>(0)));
-  }
-
-  DeclarationListAST *Decls = 0;
-
-  // We reach the innermost parser -- the last declaration. Simulate returning
-  // from recursive calls by popping elements from the stack and build the tree
-  // bottom-up.
-  while(!Stack.empty()) {
-    std::pair<DeclarationAST *, CommaAST *> &Cur = Stack.back();
-    Decls = new DeclarationListAST(Cur.first, Cur.second, Decls);
-    Stack.pop_back();
-  }
-
-  return Decls;
+  return ParseList<List, Node, Sep, &Parser::ParseDeclaration>();
 }
 
 // declaration
@@ -330,40 +301,11 @@ ScalarInitializerAST *Parser::ParseScalarInitializer() {
 //   : initializer *Comma* initializer_list
 //   | initializer
 InitializerListAST *Parser::ParseInitializerList() {
-  llvm::SmallVector<std::pair<InitializerAST *, CommaAST *>, 4> Stack;
+  typedef InitializerListAST List;
+  typedef InitializerAST Node;
+  typedef CommaAST Sep;
 
-  // We should parse at least one initializer.
-  if(InitializerAST *Init = ParseInitializer())
-    Stack.push_back(std::make_pair(Init, static_cast<CommaAST *>(0)));
-  else
-    return 0;
-
-  // If current token is a comma, then we expect to parse at least another
-  // initialization. Please notice that the comma is bound to the previously
-  // parsed declaration, not the one we are going to parse.
-  while(llvm::dyn_cast_or_null<CommaTok>(Lex.Peek(0))) {
-    CommaAST *Comma = new CommaAST(Lex.TakeAs<CommaTok>());
-
-    std::pair<InitializerAST *, CommaAST *> &Prev = Stack.back();
-    Prev.second = Comma;
-
-    // We parsed a comma, so there must be an initializer.
-    if(InitializerAST *Init = ParseInitializer())
-      Stack.push_back(std::make_pair(Init, static_cast<CommaAST *>(0)));
-  }
-
-  InitializerListAST *Inits = 0;
-
-  // We reach the innermost parser -- the last initializer. Simulate returning
-  // from recursive calls by popping elements from the stack and build the tree
-  // bottom-up.
-  while(!Stack.empty()) {
-    std::pair<InitializerAST *, CommaAST *> &Cur = Stack.back();
-    Inits = new InitializerListAST(Cur.first, Cur.second, Inits);
-    Stack.pop_back();
-  }
-
-  return Inits;
+  return ParseList<List, Node, Sep, &Parser::ParseInitializer>();
 }
 
 // initializer

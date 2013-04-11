@@ -351,8 +351,11 @@ protected:
 // We would like to represents all tokens inside the AST, so it is necessary
 // generates a different class for each of them: this macro generates a very
 // trivial class for a given token identifier.
-#define TOKEN_AST(I) \
+#define TOKEN_AST(I)                                              \
 class I ## AST : public TokenAST {                                \
+public:                                                           \
+  typedef I ## Tok Token;                                         \
+                                                                  \
 public:                                                           \
   static inline bool classof(const AbstractSyntaxTreeNode *AST) { \
     return AST->GetId() == I;                                     \
@@ -414,6 +417,9 @@ public:
 
 class LineCommentAST : public TokenAST {
 public:
+  typedef LineCommentTok Token;
+
+public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == LineComment;
   }
@@ -423,6 +429,9 @@ public:
 };
 
 class MultiLineCommentAST : public TokenAST {
+public:
+  typedef MultiLineCommentTok Token;
+
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == MultiLineComment;
@@ -511,6 +520,9 @@ TOKEN_AST(Write)
 
 class NumberAST : public TokenAST {
 public:
+  typedef NumberTok Token;
+
+public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == Number;
   }
@@ -520,6 +532,9 @@ public:
 };
 
 class IdentifierAST : public TokenAST {
+public:
+  typedef IdentifierTok Token;
+
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == Identifier;
