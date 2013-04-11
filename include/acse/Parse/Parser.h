@@ -1,4 +1,4 @@
-//===- Parser.h - Simple LL Parser for LANCE --------------------*- C++ -*-===//
+//===- Parser.h - Simple Descendent Parser for LANCE ------------*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -16,10 +16,14 @@
 namespace acse {
 
 // This class allows to extract an abstract syntax tree -- AST -- from a
-// sequence of LANCE tokens. Parsing is done through an LL algorithm. From the
-// language theory point of view, this enforces us to prefer right-recursive
-// rules other than left-recursive rules during grammar design -- LL parsers
-// cannot handle left-recursion.
+// sequence of LANCE tokens. Parsing is done through an descendent algorithm.
+//
+// In the design phase, I chose to prefer right-recursive rules over
+// left-recursive ones. This because, initially, this should be a LL parser.
+// Later I decided to go for tentative parsing, but the grammar was already
+// designed. However, using right-recursive rules will enable writing LL and LR
+// parser without modifying the grammar, and thus comparisons can be easily
+// made.
 //
 // The kind of recursion used directly influences the associativity of the
 // grammar rules: left-recursion induces left-associative rules, while
@@ -38,8 +42,9 @@ namespace acse {
 //
 // Real languages thus strictly declare the associativity of this kind of rules.
 // Left-associativity is usually preferred. From the parser implementation point
-// of view, either the AST is built by a LR parser or this kind of rules are
-// handled by a specialized parser -- e.g. an operator-precedence parser.
+// of view, either the AST is built using another parsing algorithm -- e.g. LR
+// parsing -- or this kind of rules are handled by a specialized parser -- e.g.
+// an operator-precedence parser.
 //
 // Thus, does LANCE employ left-associativity? No, but it does not matter,
 // because in LANCE the only case where associativity is important is on

@@ -1,4 +1,4 @@
-//===- Parser.cpp - Simple LL Parser for LANCE ------------------*- C++ -*-===//
+//===- Parser.cpp - Simple Descendent Parser for LANCE ----------*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -41,16 +41,12 @@ bool Parser::Run() {
 VarDeclarationsAST *Parser::ParseVarDeclarations() {
   VarDeclarationsAST *VarDecls = 0;
 
-  // LL parsing: by checking the current character we know which alternative
-  // should be chosen. In that case, we should check for tokens defining types.
-  //
-  // For readability, check the second alternative first.
-  if(!llvm::dyn_cast_or_null<IntTok>(Lex.Peek(0)))
-    VarDecls = new VarDeclarationsAST(new EmptyAST());
-
-  // First alternative: there are some declarations.
-  else if(NonEmptyVarDeclarationsAST *NonEmpty = ParseNonEmptyVarDeclarations())
+  // Tentative parsing: try parsing the first alternative -- i.e. the most
+  // common. On failure, fall-back to the second -- less common case.
+  if(NonEmptyVarDeclarationsAST *NonEmpty = ParseNonEmptyVarDeclarations())
     VarDecls = new VarDeclarationsAST(NonEmpty);
+  else
+    VarDecls = new VarDeclarationsAST(new EmptyAST());
 
   return VarDecls;
 }
@@ -61,15 +57,15 @@ VarDeclarationsAST *Parser::ParseVarDeclarations() {
 NonEmptyVarDeclarationsAST *Parser::ParseNonEmptyVarDeclarations() {
   llvm::SmallVector<VarDeclarationAST *, 4> Stack;
 
-  // Iterative version of LL right recursive calls.
+  // Iterative version of recursive descendent calls.
   while(VarDeclarationAST *VarDecl = ParseVarDeclaration())
     Stack.push_back(VarDecl);
 
   NonEmptyVarDeclarationsAST *VarDecls = 0;
 
   // We reach the innermost parser -- the last declaration in the current line.
-  // Simulate returning from LL recursive calls by popping elements from the
-  // stack and build the tree.
+  // Simulate returning from recursive calls by popping elements from the stack
+  // and build the tree.
   while(!Stack.empty()) {
     VarDecls = new NonEmptyVarDeclarationsAST(Stack.back(), VarDecls);
     Stack.pop_back();
@@ -141,8 +137,8 @@ DeclarationListAST *Parser::ParseDeclarationList() {
   DeclarationListAST *Decls = 0;
 
   // We reach the innermost parser -- the last declaration. Simulate returning
-  // from LL recursive calls by popping elements from the stack and build the
-  // tree bottom-up.
+  // from recursive calls by popping elements from the stack and build the tree
+  // bottom-up.
   while(!Stack.empty()) {
     std::pair<DeclarationAST *, CommaAST *> &Cur = Stack.back();
     Decls = new DeclarationListAST(Cur.first, Cur.second, Decls);
@@ -156,6 +152,11 @@ DeclarationListAST *Parser::ParseDeclarationList() {
 //   : scalar_declaration
 //   | array_declaration
 DeclarationAST *Parser::ParseDeclaration() {
+  // Tentative parsing here is not enough, because the tokens forming a
+  // scalar declaration are actually the prefix of an array declaration. In
+  // order to be greedy, we must look ahead and decide here which kind of
+  // declaration we are going to parse.
+  //
   // If the next-next token is not a '[', we must parse a scalar declaration.
   if(!llvm::dyn_cast_or_null<LSquareTok>(Lex.Peek(1))) {
     if(ScalarDeclarationAST *Decl = ParseScalarDeclaration())
@@ -367,8 +368,8 @@ InitializerListAST *Parser::ParseInitializerList() {
   InitializerListAST *Inits = 0;
 
   // We reach the innermost parser -- the last initializer. Simulate returning
-  // from LL recursive calls by popping elements from the stack and build the
-  // tree bottom-up.
+  // from recursive calls by popping elements from the stack and build the tree
+  // bottom-up.
   while(!Stack.empty()) {
     std::pair<InitializerAST *, CommaAST *> &Cur = Stack.back();
     Inits = new InitializerListAST(Cur.first, Cur.second, Inits);
@@ -396,34 +397,17 @@ InitializerAST *Parser::ParseInitializer() {
 //   : non_empty_statements
 //   | empty
 StatementsAST *Parser::ParseStatements() {
-  const Token *CurTok = Lex.Peek(0);
+  StatementsAST *Stmts = 0;
 
-  // No token available, we reached the end of the stream: empty production.
-  if(!CurTok)
-    return new StatementsAST(new EmptyAST());
+  // Try parsing some statements.
+  if(NonEmptyStatementsAST *NonEmpty = ParseNonEmptyStatements())
+    Stmts = new StatementsAST(NonEmpty);
 
-  NonEmptyStatementsAST *Stmts;
+  // No statements to parse.
+  else
+    Stmts = new StatementsAST(new EmptyAST());
 
-  // Otherwise, check the current token in order to detect whether we should
-  // parse some statements.
-  switch(CurTok->GetId()) {
-  case Token::Identifier:
-  case Token::Read:
-  case Token::Write:
-  case Token::SemiColon:
-  case Token::If:
-  case Token::Do:
-  case Token::While:
-    Stmts = ParseNonEmptyStatements();
-    break;
-
-  // Invalid look-ahead: error.
-  default:
-    Stmts = 0;
-    break;
-  }
-
-  return Stmts ? new StatementsAST(Stmts) : 0;
+  return Stmts;
 }
 
 // non_empty_statements
@@ -432,14 +416,14 @@ StatementsAST *Parser::ParseStatements() {
 NonEmptyStatementsAST *Parser::ParseNonEmptyStatements() {
   llvm::SmallVector<StatementAST *, 4> Stack;
 
-  // Iterative version of LL right recursive calls.
+  // Iterative version of right recursive calls.
   while(StatementAST *Stmt = ParseStatement())
     Stack.push_back(Stmt);
 
   NonEmptyStatementsAST *Stmts = 0;
 
   // We reach the innermost parser -- the last statement. Simulate returning
-  // from LL recursive calls by popping elements from the stack and build the
+  // from recursive calls by popping elements from the stack and build the
   // abstract syntax tree.
   while(!Stack.empty()) {
     Stmts = new NonEmptyStatementsAST(Stack.back(), Stmts);
@@ -463,10 +447,16 @@ StatementAST *Parser::ParseStatement() {
 
   StatementAST *Stmt = 0;
 
-  // Normally, I performed the LL lookup using the llvm::dyn_cast_or_null, but
-  // in this case, since there are a lot of alternatives, I preferred checking
-  // the token id. In this way, I can use a switch statement and write a more
-  // readable code.
+  // The actual parser to spawn must be chosen between a lot of alternatives.
+  // Instead of trying all of them, it is better to look ahead a select the
+  // right parser to spawn.
+  //
+  // Automatically generated parser usually performs a lot of ahead lookup. We
+  // do not, because this will make the code unreadable, which is not a
+  // desirable property for an hand-written parsers.
+  //
+  // Here, in order to keep the code as clean as possible, I checked the token
+  // id instead of checking its class during the look ahead.
   switch(CurTok->GetId()) {
 
   // The left hand side of an assignment is always an identifier. Indeed, even
@@ -504,7 +494,7 @@ StatementAST *Parser::ParseStatement() {
                               new SemiColonAST(Lex.TakeAs<SemiColonTok>()));
     break;
 
-  // Control statements always start with a keyword: LL check is trivial.
+  // Control statements always start with a keyword: check is trivial.
   case Token::If:
   case Token::Do:
   case Token::While:

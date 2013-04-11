@@ -32,7 +32,8 @@ compiler, however there are four major differences inside the compiler itself:
    used to automatically generate the scanner
 2. the parser is written _by hand_; in the original ACSE compiler ``bison`` was
    used to automatically generate a LALR parser
-3. the parser is actually an LL parser, and it explicitly builds the AST
+3. the parser is actually a recursive descendent parser, and it explicitly
+   builds the AST
 4. code emission is not performed together with parsing; llvm-acse does require
    two steps to generate code: parsing the input stream to build an AST, and
    later visiting the AST to emit code
