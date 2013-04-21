@@ -661,9 +661,11 @@ public:
 
 public:
   InitializerListAST(InitializerAST *Init,
-                     CommaAST *Comma,
-                     InitializerListAST *InitList)
-    : AbstractSyntaxTreeNode(InitializerList, Init, Comma, InitList) { }
+                     CommaAST *Comma = 0,
+                     InitializerListAST *InitList = 0)
+    : AbstractSyntaxTreeNode(InitializerList, Init, Comma, InitList) {
+    assert((Comma && InitList || !Comma && !InitList) && "Missing elements");
+  }
 };
 
 // scalar_initializer
@@ -801,9 +803,11 @@ public:
 
 public:
   DeclarationListAST(DeclarationAST *Decl,
-                     CommaAST *Comma,
-                     DeclarationListAST *DeclList)
-    : AbstractSyntaxTreeNode(DeclarationList, Decl, Comma, DeclList) { }
+                     CommaAST *Comma = 0,
+                     DeclarationListAST *DeclList= 0)
+    : AbstractSyntaxTreeNode(DeclarationList, Decl, Comma, DeclList) {
+    assert((Comma && DeclList || !Comma && !DeclList) && "Missing elements");
+  }
 };
 
 // var_declaration
