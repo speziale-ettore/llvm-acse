@@ -617,7 +617,7 @@ public:
   }
 
 public:
-  NonEmptyStatementsAST(StatementAST *Stmt, NonEmptyStatementsAST *Stmts)
+  NonEmptyStatementsAST(StatementAST *Stmt, NonEmptyStatementsAST *Stmts = 0)
     : AbstractSyntaxTreeNode(NonEmptyStatements, Stmt, Stmts) { }
 };
 
