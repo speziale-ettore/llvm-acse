@@ -55,10 +55,7 @@ VarDeclarationsAST *Parser::ParseVarDeclarations() {
 //   : var_declaration non_empty_var_declarations
 //   | var_declaration
 NonEmptyVarDeclarationsAST *Parser::ParseNonEmptyVarDeclarations() {
-  typedef NonEmptyVarDeclarationsAST List;
-  typedef VarDeclarationAST Node;
-
-  return ParseList<List, Node, &Parser::ParseVarDeclaration>();
+  return ParseList<NonEmptyVarDeclarationsAST, VarDeclarationAST>();
 }
 
 // var_declaration
@@ -335,10 +332,7 @@ StatementsAST *Parser::ParseStatements() {
 //   : statement non_empty_statements
 //   | statement
 NonEmptyStatementsAST *Parser::ParseNonEmptyStatements() {
-  typedef NonEmptyStatementsAST List;
-  typedef StatementAST Node;
-
-  return ParseList<List, Node, &Parser::ParseStatement>();
+  return ParseList<NonEmptyStatementsAST, StatementAST>();
 }
 
 // statement
@@ -469,20 +463,28 @@ void Parser::ReportError(ErrorTy Error, llvm::SMLoc Loc) {
 // list element.
 namespace acse {
 
-template <>
-struct ListParseTraits<DeclarationListAST, DeclarationAST, CommaAST>
-  : public DefaultListParseTraits<DeclarationListAST,
-                                  DeclarationAST,
-                                  CommaAST> {
-  static NodeParser GetNodeParser() { return &Parser::ParseDeclaration; }
+#define LIST_TRAITS(L, N, S) \
+template <>                                                         \
+struct ListParseTraits<L ## AST, N ## AST, S>                       \
+  : public DefaultListParseTraits<L ## AST, N ## AST, S> {          \
+  static NodeParser GetNodeParser() { return &Parser::Parse ## N; } \
 };
 
-template <>
-struct ListParseTraits<InitializerListAST, InitializerAST, CommaAST>
-  : public DefaultListParseTraits<InitializerListAST,
-                                  InitializerAST,
-                                  CommaAST> {
-  static NodeParser GetNodeParser() { return &Parser::ParseInitializer; }
+LIST_TRAITS(NonEmptyVarDeclarations, VarDeclaration, ListParseNoSepTag)
+LIST_TRAITS(NonEmptyStatements, Statement, ListParseNoSepTag)
+
+#undef LIST_TRAITS
+
+#define LIST_TRAITS(L, N, S) \
+template <>                                                         \
+struct ListParseTraits<L ## AST, N ## AST, S ## AST>                \
+  : public DefaultListParseTraits<L ## AST, N ## AST, S ## AST> {   \
+  static NodeParser GetNodeParser() { return &Parser::Parse ## N; } \
 };
+
+LIST_TRAITS(DeclarationList, Declaration, Comma)
+LIST_TRAITS(InitializerList, Initializer, Comma)
+
+#undef LIST_TRAITS
 
 } // End namespace acse.

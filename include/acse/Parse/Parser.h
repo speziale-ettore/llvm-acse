@@ -21,6 +21,14 @@ namespace acse {
 template <typename ListTy, typename NodeTy, typename SepTy>
 struct ListParseTraits;
 
+// Tag structure used to eliminate separator checks in the case the list does
+// not employ them. See specializations of ListParseTraits for more info.
+struct ListParseNoSepTag { };
+
+// Tag structure used to stop template expansion of separators of a list. See
+// specializations of ListParseTraits for more info.
+struct ListParseEndTag { };
+
 // This class allows to extract an abstract syntax tree -- AST -- from a
 // sequence of LANCE tokens. Parsing is done through an descendent algorithm.
 //
@@ -126,37 +134,6 @@ private:
   NullStatementAST *ParseNullStatement();
   ControlStatementAST *ParseControlStatement();
 
-  // Since a lot of things we should parse are lists, I defined this template
-  // function for parsing them. Indeed, the only difference between lists are:
-  //
-  // - ListTy: its type
-  // - NodeTy: the type of its nodes
-  // - NodeParser: the member function used to parse a list element
-  //
-  // I had to use some C++ black magic, but in this way code is much more
-  // readable.
-  //
-  // TODO: port to new interface and move below.
-  template <typename ListTy, typename NodeTy, NodeTy *(Parser::*NodeParser)()>
-  ListTy *ParseList() {
-    llvm::SmallVector<NodeTy *, 4> Stack;
-
-    // Iterative version of recursive descendent calls.
-    while(NodeTy *Node = (this->*NodeParser)())
-      Stack.push_back(Node);
-
-    ListTy *List = 0;
-
-    // We reach the innermost parser. Simulate returning from recursive calls
-    // by popping elements from the stack and build the tree.
-    while(!Stack.empty()) {
-      List = new ListTy(Stack.back(), List);
-      Stack.pop_back();
-    }
-
-    return List;
-  }
-
 private:
   // Since I do not want to use C++11, we cannot perform partial specialization
   // of member function templates. The standard trick to achieve the same
@@ -164,13 +141,20 @@ private:
   // a class, which can then be partially specialized.
   template <typename ListTy, typename NodeTy, typename SepTy>
   struct ParseListHelper {
+    static ListTy *CreateList(NodeTy *Node, ListTy *List);
+
     static TokenAST *ParseSeparator(Lexer &Lex);
     static ListTy *CreateList(NodeTy *Node, TokenAST *Sep, ListTy *List);
   };
 
 private:
-  // Generic list parsing algorithm. Usage is trivial, just invoke with the
-  // triplet of classes you like. Remeber to:
+  // Generic list parsing algorithm for list with no separator. Require
+  // specialization of the ListParseTraits trait.
+  template <typename ListTy, typename NodeTy>
+  ListTy *ParseList();
+
+  // Generic list parsing algorithm for list with separators. Usage is trivial,
+  // just invoke with the triplet of classes you like. Remeber to:
   //
   // 1) specialize the ListParseTraits trait
   // 2) add the specialization as a friend of class Parser
@@ -199,14 +183,23 @@ private:
 
   llvm::OwningPtr<AbstractSyntaxTree> AST;
 
-  friend struct ListParseTraits<DeclarationListAST, DeclarationAST, CommaAST>;
-  friend struct ListParseTraits<InitializerListAST, InitializerAST, CommaAST>;
+
+  #define LIST_TRAITS(L, N, S)                          \
+  friend struct ListParseTraits<L ## AST, N ## AST, S>;
+
+  LIST_TRAITS(NonEmptyVarDeclarations, VarDeclaration, ListParseNoSepTag)
+  LIST_TRAITS(NonEmptyStatements, Statement, ListParseNoSepTag)
+
+  #undef LIST_TRAITS
+
+  #define LIST_TRAITS(L, N, S)                                 \
+  friend struct ListParseTraits<L ## AST, N ## AST, S ## AST>;
+
+  LIST_TRAITS(DeclarationList, Declaration, Comma)
+  LIST_TRAITS(InitializerList, Initializer, Comma)
+
+  #undef LIST_TRAITS
 };
-
-
-// Tag structure used to stop template expansion of separators of a list. See
-// specializations of ListParseTraits for more information.
-struct ListParseEndTag { };
 
 // This class defines a reasonable set of defaults for list parsing. It supports
 // lists with only one kind of separator. If your list elements can be separated
@@ -225,6 +218,23 @@ struct DefaultListParseTraits {
 
   static ListTy *CreateListAST(NodeTy *Node, SepTy *Sep, ListTy *List) {
     return new ListTy(Node, Sep, List);
+  }
+
+  static ListTy *CreateListAST(NodeTy *Node) {
+    return new ListTy(Node);
+  }
+};
+
+// A reasonable set of defaults for list parsing, suited for list with no
+// separators at all.
+template <typename ListTy, typename NodeTy>
+struct DefaultListParseTraits<ListTy, NodeTy, ListParseNoSepTag> {
+  typedef NodeTy *(Parser::*NodeParser)();
+
+  static NodeParser GetNodeParser();
+
+  static ListTy *CreateListAST(NodeTy *Node, ListTy *List) {
+    return new ListTy(Node, List);
   }
 
   static ListTy *CreateListAST(NodeTy *Node) {
@@ -315,6 +325,35 @@ struct Parser::ParseListHelper<ListTy, NodeTy, ListParseEndTag> {
     return 0;
   }
 };
+
+template <typename ListTy, typename NodeTy>
+inline
+ListTy *Parser::ParseList() {
+  typedef ListParseTraits<ListTy, NodeTy, ListParseNoSepTag> ParseTraits;
+
+  llvm::SmallVector<NodeTy *, 4> Stack;
+
+  // Optimization notice: the parser is obtained via a function pointer,
+  // however, the compiler is smart enough to inline all the calls to the trait
+  // functions an later performing constant propagation: indirect calls becomes
+  // direct calls.
+  NodeTy *(Parser::*NodeParser)() = ParseTraits::GetNodeParser();
+
+  // Iterative version of recursive descendent calls.
+  while(NodeTy *Node = (this->*NodeParser)())
+    Stack.push_back(Node);
+
+  ListTy *List = 0;
+
+  // We reach the innermost parser. Simulate returning from recursive calls
+  // by popping elements from the stack and build the tree.
+  while(!Stack.empty()) {
+    List = ParseTraits::CreateListAST(Stack.back(), List);
+    Stack.pop_back();
+  }
+
+  return List;
+}
 
 template <typename ListTy, typename NodeTy, typename SepTy>
 inline
