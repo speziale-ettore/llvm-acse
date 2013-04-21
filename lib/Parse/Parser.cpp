@@ -99,11 +99,7 @@ VarDeclarationAST *Parser::ParseVarDeclaration() {
 //   : declaration *Comma* declaration_list
 //   | declaration
 DeclarationListAST *Parser::ParseDeclarationList() {
-  typedef DeclarationListAST List;
-  typedef DeclarationAST Node;
-  typedef CommaAST Sep;
-
-  return ParseList<List, Node, Sep, &Parser::ParseDeclaration>();
+  return ParseList<DeclarationListAST, DeclarationAST, CommaAST>();
 }
 
 // declaration
@@ -301,11 +297,7 @@ ScalarInitializerAST *Parser::ParseScalarInitializer() {
 //   : initializer *Comma* initializer_list
 //   | initializer
 InitializerListAST *Parser::ParseInitializerList() {
-  typedef InitializerListAST List;
-  typedef InitializerAST Node;
-  typedef CommaAST Sep;
-
-  return ParseList<List, Node, Sep, &Parser::ParseInitializer>();
+  return ParseList<InitializerListAST, InitializerAST, CommaAST>();
 }
 
 // initializer
@@ -470,3 +462,27 @@ void Parser::ReportError(ErrorTy Error, llvm::SMLoc Loc) {
   // we can detected whether we built a valid AST.
   ErrorsFound = true;
 }
+
+// Specialization of list parser templates. For each AST which is actually a
+// list, the ListParseTraits template must be specialized in order to tell to
+// the generic list parsing function ParseList which parser to use for parsing a
+// list element.
+namespace acse {
+
+template <>
+struct ListParseTraits<DeclarationListAST, DeclarationAST, CommaAST>
+  : public DefaultListParseTraits<DeclarationListAST,
+                                  DeclarationAST,
+                                  CommaAST> {
+  static NodeParser GetNodeParser() { return &Parser::ParseDeclaration; }
+};
+
+template <>
+struct ListParseTraits<InitializerListAST, InitializerAST, CommaAST>
+  : public DefaultListParseTraits<InitializerListAST,
+                                  InitializerAST,
+                                  CommaAST> {
+  static NodeParser GetNodeParser() { return &Parser::ParseInitializer; }
+};
+
+} // End namespace acse.
