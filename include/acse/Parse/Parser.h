@@ -134,6 +134,9 @@ private:
   NullStatementAST *ParseNullStatement();
   ControlStatementAST *ParseControlStatement();
 
+  ScalarAssignmentAST *ParseScalarAssignment();
+  ArrayAssignmentAST *ParseArrayAssignment();
+
 private:
   // Since I do not want to use C++11, we cannot perform partial specialization
   // of member function templates. The standard trick to achieve the same

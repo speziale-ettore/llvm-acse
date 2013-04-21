@@ -548,11 +548,35 @@ public:
 // Non-terminal rule ASTs.
 //
 
+class ScalarAssignmentAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == ScalarAssignment;
+  }
+};
+
+class ArrayAssignmentAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == ArrayAssignment;
+  }
+};
+
+// assign_statement
+//   : scalar_assignment
+//   | array_assignment
 class AssignStatementAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == AssignStatement;
   }
+
+public:
+  AssignStatementAST(ScalarAssignmentAST *Assign)
+    : AbstractSyntaxTreeNode(ScalarAssignment, Assign) { }
+
+  AssignStatementAST(ArrayAssignmentAST *Assign)
+    : AbstractSyntaxTreeNode(ScalarAssignment, Assign) { }
 };
 
 class ReadWriteStatementAST : public AbstractSyntaxTreeNode {

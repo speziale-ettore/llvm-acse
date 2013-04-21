@@ -107,7 +107,7 @@ DeclarationAST *Parser::ParseDeclaration() {
   // scalar declaration are actually the prefix of an array declaration. In
   // order to be greedy, we must look ahead and decide here which kind of
   // declaration we are going to parse.
-  //
+
   // If the next-next token is not a '[', we must parse a scalar declaration.
   if(!llvm::dyn_cast_or_null<LSquareTok>(Lex.Peek(1))) {
     if(ScalarDeclarationAST *Decl = ParseScalarDeclaration())
@@ -412,7 +412,27 @@ StatementAST *Parser::ParseStatement() {
   return Stmt;
 }
 
+// assign_statement
+//   : scalar_assignment
+//   | array_assignment
 AssignStatementAST *Parser::ParseAssignStatement() {
+  // Tentative parsing here is not enough, because the tokens forming a scalar
+  // assignment are actually the prefix of an array assignment. In order to be
+  // greedy, we must look ahead and decide here which kind of assignment we are
+  // going to parse.
+
+  // If the next-next token is not a '[', we must parse a scalar assignment.
+  if(!llvm::dyn_cast_or_null<LSquareTok>(Lex.Peek(1))) {
+    if(ScalarAssignmentAST *Assign = ParseScalarAssignment())
+      return new AssignStatementAST(Assign);
+
+  // Otherwise, it must be an array declaration.
+  } else {
+    if(ArrayAssignmentAST *Assign = ParseArrayAssignment())
+      return new AssignStatementAST(Assign);
+  }
+
+  // Parsing failed.
   return 0;
 }
 
@@ -429,6 +449,14 @@ NullStatementAST *Parser::ParseNullStatement() {
 }
 
 ControlStatementAST *Parser::ParseControlStatement() {
+  return 0;
+}
+
+ScalarAssignmentAST *Parser::ParseScalarAssignment() {
+  return 0;
+}
+
+ArrayAssignmentAST *Parser::ParseArrayAssignment() {
   return 0;
 }
 

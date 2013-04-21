@@ -47,3 +47,7 @@ AST(AssignStatement)
 AST(ReadWriteStatement)
 AST(NullStatement)
 AST(ControlStatement)
+
+// Non-terminal rule ASTs: assignments.
+AST(ScalarAssignment)
+AST(ArrayAssignment)
