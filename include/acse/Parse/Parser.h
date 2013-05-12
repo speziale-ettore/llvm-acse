@@ -137,6 +137,8 @@ private:
   ScalarAssignmentAST *ParseScalarAssignment();
   ArrayAssignmentAST *ParseArrayAssignment();
 
+  ExpressionAST *ParseExpression();
+
 private:
   // Since I do not want to use C++11, we cannot perform partial specialization
   // of member function templates. The standard trick to achieve the same
@@ -186,7 +188,6 @@ private:
 
   llvm::OwningPtr<AbstractSyntaxTree> AST;
 
-
   #define LIST_TRAITS(L, N, S)                          \
   friend struct ListParseTraits<L ## AST, N ## AST, S>;
 
@@ -205,9 +206,7 @@ private:
 };
 
 // This class defines a reasonable set of defaults for list parsing. It supports
-// lists with only one kind of separator. If your list elements can be separated
-// by more than just one kind of separator, derive from this class and
-// specialize the ListParseTraits trait.
+// lists with only one kind of separator.
 template <typename ListTy, typename NodeTy, typename SepTy>
 struct DefaultListParseTraits {
   typedef NodeTy *(Parser::*NodeParser)();

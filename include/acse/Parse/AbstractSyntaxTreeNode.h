@@ -78,7 +78,9 @@ public:
 
     // Special enum values.
     MinTokenId = LineComment,
-    MaxTokenId = Identifier
+    MaxTokenId = Identifier,
+    MinExprId = AddExpr,
+    MaxExprId = LOrExpr
   };
 
 private:
@@ -365,6 +367,101 @@ public:                                                           \
   I ## AST(I ## Tok *Tok) : TokenAST(I, Tok) { }                  \
 };
 
+// TODO: comment.
+class ExpressionAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return MinExprId <= AST->GetId() && AST->GetId() <= MaxExprId;
+  }
+
+protected:
+  // TODO: comment.
+  ExpressionAST(Id Identifier,
+                AbstractSyntaxTreeNode *Operand)
+    : AbstractSyntaxTreeNode(Identifier, Operand)
+      { }
+
+  // TODO: comment.
+  ExpressionAST(Id Identifier,
+                TokenAST *Operator,
+                AbstractSyntaxTreeNode *Operand)
+    : AbstractSyntaxTreeNode(Identifier, Operator, Operand)
+      { }
+
+  // TODO: comment.
+  ExpressionAST(Id Identifier,
+                AbstractSyntaxTreeNode *LeftOperand,
+                TokenAST *Operator,
+                AbstractSyntaxTreeNode *RightOperand)
+    : AbstractSyntaxTreeNode(Identifier, LeftOperand, Operator, RightOperand)
+      { }
+
+  // TODO: comment.
+  ExpressionAST(Id Identifier,
+                TokenAST *Start,
+                AbstractSyntaxTreeNode *Operand,
+                TokenAST *End)
+    : AbstractSyntaxTreeNode(Identifier, Start, Operand, End)
+      { }
+};
+
+// TODO: comment.
+class UnaryExprAST : public ExpressionAST {
+public:
+  // TODO: comment + implement.
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return false;
+  }
+
+protected:
+  UnaryExprAST(Id Identifier, TokenAST *Operator, ExpressionAST *Operand)
+    : ExpressionAST(Identifier, Operator, Operand) { }
+};
+
+// TODO: comment.
+class BinaryExprAST : public ExpressionAST {
+public:
+  // TODO: comment + implement.
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return false;
+  }
+
+protected:
+  BinaryExprAST(Id Identifier,
+                ExpressionAST *LeftOperand,
+                TokenAST *Operator,
+                ExpressionAST *RightOperand)
+    : ExpressionAST(Identifier, LeftOperand, Operator, RightOperand) { }
+};
+
+// TODO: comment.
+#define UNARY_EXPR_AST(I)                                         \
+class I ## ExprAST : public UnaryExprAST {                        \
+public:                                                           \
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) { \
+    return AST->GetId() == I ## Expr;                             \
+  }                                                               \
+                                                                  \
+public:                                                           \
+  I ## ExprAST(I ## AST *Operator, ExpressionAST *Operand)        \
+    : UnaryExprAST(I ## Expr, Operator, Operand) { }              \
+};
+
+// TODO: comment.
+#define BINARY_EXPR_AST(I)                                              \
+class I ## ExprAST : public BinaryExprAST {                             \
+public:                                                                 \
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {       \
+    return AST->GetId() == I ## Expr;                                   \
+  }                                                                     \
+                                                                        \
+public:                                                                 \
+  I ## ExprAST(ExpressionAST *LeftOperand,                              \
+               I ## AST *Operator,                                      \
+               ExpressionAST *RightOperand)                             \
+    : BinaryExprAST(I ## Expr, LeftOperand, Operator, RightOperand) { } \
+};
+
 // From a design point of view, it would be better to define classes from the
 // root class up to the leaves of the hierarchy. This allows to introduce first
 // more abstract concepts and to refine them with the introduction of more
@@ -548,11 +645,47 @@ public:
 // Non-terminal rule ASTs.
 //
 
+// Algebraic expressions.
+BINARY_EXPR_AST(Add)
+BINARY_EXPR_AST(Sub)
+BINARY_EXPR_AST(Mul)
+BINARY_EXPR_AST(Div)
+BINARY_EXPR_AST(Mod)
+
+// Relational expressions.
+BINARY_EXPR_AST(Less)
+BINARY_EXPR_AST(LessOrEqual)
+BINARY_EXPR_AST(Equal)
+BINARY_EXPR_AST(NotEqual)
+BINARY_EXPR_AST(GreaterOrEqual)
+BINARY_EXPR_AST(Greater)
+
+// Bitwise expressions.
+BINARY_EXPR_AST(BAnd)
+BINARY_EXPR_AST(BOr)
+BINARY_EXPR_AST(BNot)
+BINARY_EXPR_AST(LShift)
+BINARY_EXPR_AST(RShift)
+
+// Logical expressions.
+BINARY_EXPR_AST(LAnd)
+BINARY_EXPR_AST(LOr)
+
+#undef UNARY_EXPR_AST
+#undef BINARY_EXPR_AST
+
+// scalar_assignment
+//   : *Identifier* *Assign* expression
 class ScalarAssignmentAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == ScalarAssignment;
   }
+
+  ScalarAssignmentAST(IdentifierAST *LHS,
+                      AssignAST *Assign,
+                      ExpressionAST *RHS)
+    : AbstractSyntaxTreeNode(ScalarAssignment, LHS, Assign, RHS) { }
 };
 
 class ArrayAssignmentAST : public AbstractSyntaxTreeNode {

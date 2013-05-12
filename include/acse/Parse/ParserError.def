@@ -10,6 +10,7 @@
 ERROR(DeclarationListMustEndWithSemiColon, "declaration list must ends with "
                                            "semicolon")
 ERROR(ExpectedArraySize, "expected array size")
+ERROR(ExpectedAssign, "expected '='")
 ERROR(ExpectedIdentifier, "expected identifier")
 ERROR(ExpectedLBrace, "expected '{'")
 ERROR(ExpectedRBrace, "expected '}'")

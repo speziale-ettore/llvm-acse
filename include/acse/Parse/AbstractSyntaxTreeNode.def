@@ -51,3 +51,29 @@ AST(ControlStatement)
 // Non-terminal rule ASTs: assignments.
 AST(ScalarAssignment)
 AST(ArrayAssignment)
+
+// Non-terminal rule ASTs: algebraic expressions.
+AST(AddExpr) // '+'
+AST(SubExpr) // '-'
+AST(MulExpr) // '*'
+AST(DivExpr) // '/'
+AST(ModExpr) // '%'
+
+// Non-terminal rule ASTs: relational expressions.
+AST(LessExpr)           // '<'
+AST(LessOrEqualExpr)    // '<='
+AST(EqualExpr)          // '=='
+AST(NotEqualExpr)       // '!='
+AST(GreaterOrEqualExpr) // '>='
+AST(GreaterExpr)        // '>'
+
+// Non-terminal rule ASTs: bitwise expressions.
+AST(BAndExpr)   // '&'
+AST(BOrExpr)    // '|'
+AST(BNotExpr)   // '!'
+AST(LShiftExpr) // '<<'
+AST(RShiftExpr) // '>>'
+
+// Non-terminal rule ASTs: logical expressions.
+AST(LAndExpr) // '&&'
+AST(LOrExpr)  // '||'

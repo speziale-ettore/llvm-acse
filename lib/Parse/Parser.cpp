@@ -281,13 +281,13 @@ ArrayInitializerAST *Parser::ParseArrayInitializer() {
 // scalar_initializer
 //   : initializer
 ScalarInitializerAST *Parser::ParseScalarInitializer() {
-  ScalarInitializerAST *Init = 0;
+  ScalarInitializerAST *ScalarInit = 0;
 
   // Just for symmetry with respect to the array initializer.
   if(InitializerAST *Init = ParseInitializer())
-    return new ScalarInitializerAST(Init);
+    ScalarInit = new ScalarInitializerAST(Init);
 
-  return Init;
+  return ScalarInit;
 }
 
 // initializer_list
@@ -452,11 +452,42 @@ ControlStatementAST *Parser::ParseControlStatement() {
   return 0;
 }
 
+// scalar_assignment
+//   : *Identifier* *Assign* expression
 ScalarAssignmentAST *Parser::ParseScalarAssignment() {
-  return 0;
+  llvm::OwningPtr<IdentifierAST> LHS;
+  llvm::OwningPtr<AssignAST> Assign;
+
+  ScalarAssignmentAST *Stmt = 0;
+
+  // LHS must be an identifier.
+  if(!llvm::dyn_cast_or_null<IdentifierTok>(Lex.Peek(0))) {
+    ReportError(ExpectedIdentifier, Lex.GetCurrentLoc());
+    return 0;
+  }
+
+  LHS.reset(new IdentifierAST(Lex.TakeAs<IdentifierTok>()));
+
+  // Assignment token expected.
+  if(!llvm::dyn_cast_or_null<AssignTok>(Lex.Peek(0))) {
+    ReportError(ExpectedAssign, Lex.GetCurrentLoc());
+    return 0;
+  }
+
+  Assign.reset(new AssignAST(Lex.TakeAs<AssignTok>()));
+
+  // At last we expect and expression as the RHS.
+  if(ExpressionAST *RHS = ParseExpression())
+    Stmt = new ScalarAssignmentAST(LHS.take(), Assign.take(), RHS);
+
+  return Stmt;
 }
 
 ArrayAssignmentAST *Parser::ParseArrayAssignment() {
+  return 0;
+}
+
+ExpressionAST *Parser::ParseExpression() {
   return 0;
 }
 
@@ -491,7 +522,7 @@ void Parser::ReportError(ErrorTy Error, llvm::SMLoc Loc) {
 // list element.
 namespace acse {
 
-#define LIST_TRAITS(L, N, S) \
+#define LIST_TRAITS(L, N, S)                                        \
 template <>                                                         \
 struct ListParseTraits<L ## AST, N ## AST, S>                       \
   : public DefaultListParseTraits<L ## AST, N ## AST, S> {          \
