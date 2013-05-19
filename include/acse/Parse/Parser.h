@@ -25,10 +25,6 @@ struct ListParseTraits;
 // not employ them. See specializations of ListParseTraits for more info.
 struct ListParseNoSepTag { };
 
-// Tag structure used to stop template expansion of separators of a list. See
-// specializations of ListParseTraits for more info.
-struct ListParseEndTag { };
-
 // This class allows to extract an abstract syntax tree -- AST -- from a
 // sequence of LANCE tokens. Parsing is done through an descendent algorithm.
 //
@@ -60,11 +56,18 @@ struct ListParseEndTag { };
 // parsing -- or this kind of rules are handled by a specialized parser -- e.g.
 // an operator-precedence parser.
 //
-// Thus, does LANCE employ left-associativity? No, but it does not matter,
-// because in LANCE the only case where associativity is important is on
-// arithmetic expressions, but since only fixed point arithmetic is supported,
-// choosing left-associativity or right-associativity is equivalent: the
-// expression value will be the same.
+// Thus, does LANCE employ left-associativity? Well, initially I decided to go
+// for right associativity, but I forgot to take into account the amount of
+// precedence levels employed by LANCE expressions: 7.
+//
+// This means that even in the best case -- e.g. parsing an expression made-up
+// of just a constant -- the parsing stack depth will be 7 -- the parser spends
+// a lot of time just calling functions for non-terminal copy rules.
+//
+// So, I decided to use a more smarter algorithm just for expressions parsing:
+// Pratt's "Top Down Operator Precedence Parsing". As a side effect, this
+// algorithm can handle right-associativity -- for, and only for, expression
+// parsing LANCE supports right-associativity.
 //
 // Code organization is straightforward: the Run method tries to parse the token
 // stream and to built the AST. Each rule in the grammar defines a parser that
@@ -140,44 +143,20 @@ private:
   ExpressionAST *ParseExpression();
 
 private:
-  // Since I do not want to use C++11, we cannot perform partial specialization
-  // of member function templates. The standard trick to achieve the same
-  // result with older version of C++ is to declare those function as member of
-  // a class, which can then be partially specialized.
-  template <typename ListTy, typename NodeTy, typename SepTy>
-  struct ParseListHelper {
-    static ListTy *CreateList(NodeTy *Node, ListTy *List);
-
-    static TokenAST *ParseSeparator(Lexer &Lex);
-    static ListTy *CreateList(NodeTy *Node, TokenAST *Sep, ListTy *List);
-  };
-
-private:
   // Generic list parsing algorithm for list with no separator. Require
   // specialization of the ListParseTraits trait.
   template <typename ListTy, typename NodeTy>
   ListTy *ParseList();
 
   // Generic list parsing algorithm for list with separators. Usage is trivial,
-  // just invoke with the triplet of classes you like. Remeber to:
+  // just invoke with the triplet of classes you like. Remember to:
   //
   // 1) specialize the ListParseTraits trait
   // 2) add the specialization as a friend of class Parser
   //
-  // For supporting multiple separators, properly define the NextSeparator field
-  // of ListParseTraits. To stop recursion, set it to ListParseEndTag.
+  // The template machinery will do all the magic.
   template <typename ListTy, typename NodeTy, typename SepTy>
   ListTy *ParseList();
-
-  template <typename ListTy, typename NodeTy, typename SepTy>
-  TokenAST *ParseListSeparator() {
-    return ParseListHelper<ListTy, NodeTy, SepTy>::ParseSeparator(Lex);
-  }
-
-  template <typename ListTy, typename NodeTy, typename SepTy>
-  ListTy *CreateList(NodeTy *Node, TokenAST *Sep, ListTy *List) {
-    return ParseListHelper<ListTy, NodeTy, SepTy>::CreateList(Node, Sep, List);
-  }
 
 private:
   void ReportError(ErrorTy Error, llvm::SMLoc Loc);
@@ -205,16 +184,14 @@ private:
   #undef LIST_TRAITS
 };
 
-// This class defines a reasonable set of defaults for list parsing. It supports
-// lists with only one kind of separator.
+// This class defines a reasonable set of defaults for list parsing.
 template <typename ListTy, typename NodeTy, typename SepTy>
 struct DefaultListParseTraits {
   typedef NodeTy *(Parser::*NodeParser)();
-  typedef ListParseEndTag NextSeparator;
 
   static NodeParser GetNodeParser();
 
-  static TokenAST *CreateSeparatorAST(typename SepTy::Token *Sep) {
+  static SepTy *CreateSeparatorAST(typename SepTy::Token *Sep) {
     return new SepTy(Sep);
   }
 
@@ -252,14 +229,10 @@ struct DefaultListParseTraits<ListTy, NodeTy, ListParseNoSepTag> {
 // - typedef NodeTy *(Parser::*NodeParser)(): signature of the Parser member
 //   function that allows to parse an element of the list
 //
-// - typedef YourSeparator NextSeparator: the next separator to try if parsing
-//   with the current one fails. Use ListParseEndTag as YourSeparator to end the
-//   compile-time recursion
-//
 // - static NodeParser GetNodeParser(): used to get the Parser member function
 //   that parses a list element
 //
-// - static TokenAST *CreateSeparatorAST(typename SepTy::Token *Sep): builds an
+// - static SepTy *CreateSeparatorAST(typename SepTy::Token *Sep): builds an
 //   AST representing the given token
 //
 // - static ListTy *CreateListAST(NodeTy *Node, SepTy *Sep, ListTy *List):
@@ -277,56 +250,6 @@ struct ListParseTraits
 
 // The generic list parser uses the ListParseTraits, hence I had to implement it
 // here, after trait declaration.
-
-// Parse the separator of a list. On fail, try using the next separator.
-template <typename ListTy, typename NodeTy, typename SepTy>
-inline
-TokenAST *Parser::ParseListHelper<ListTy, NodeTy, SepTy>
-                ::ParseSeparator(Lexer &Lex) {
-  typedef ListParseTraits<ListTy, NodeTy, SepTy> ParseTraits;
-
-  typedef typename SepTy::Token SepTokTy;
-  typedef typename ParseTraits::NextSeparator NextSepTy;
-
-  if(llvm::dyn_cast_or_null<SepTokTy>(Lex.Peek(0)))
-    return ParseTraits::CreateSeparatorAST(Lex.TakeAs<SepTokTy>());
-  else
-    return ParseListHelper<ListTy, NodeTy, NextSepTy>::ParseSeparator(Lex);
-}
-
-// Create a list holding the given triplet. Since each separator can be bound to
-// a different subclass of ListTy, in case the given separator Sep cannot be
-// used to create a suitable list node, the next one is considered.
-template <typename ListTy, typename NodeTy, typename SepTy>
-inline
-ListTy *Parser::ParseListHelper<ListTy, NodeTy, SepTy>
-              ::CreateList(NodeTy *Node, TokenAST *Sep, ListTy *List) {
-  typedef ListParseTraits<ListTy, NodeTy, SepTy> ParseTraits;
-
-  assert((Sep && List || !Sep && !List) && "Missing elements");
-
-  if(!Sep)
-    return ParseTraits::CreateListAST(Node);
-
-  else if(SepTy *CastedSep = llvm::dyn_cast_or_null<SepTy>(Sep))
-    return ParseTraits::CreateListAST(Node, CastedSep, List);
-
-  else
-    return ParseListHelper<ListTy, NodeTy, SepTy>::CreateList(Node, Sep, List);
-}
-
-// Partial specialization which enables to stop compile-time recursion of the
-// generic list parser algorithms.
-template <typename ListTy, typename NodeTy>
-struct Parser::ParseListHelper<ListTy, NodeTy, ListParseEndTag> {
-  static TokenAST *ParseSeparator(Lexer &Lex) {
-    return 0;
-  }
-
-  static ListTy *CreateList(NodeTy *Node, TokenAST *Sep, ListTy *List) {
-    return 0;
-  }
-};
 
 template <typename ListTy, typename NodeTy>
 inline
@@ -361,8 +284,9 @@ template <typename ListTy, typename NodeTy, typename SepTy>
 inline
 ListTy *Parser::ParseList() {
   typedef ListParseTraits<ListTy, NodeTy, SepTy> ParseTraits;
+  typedef typename SepTy::Token SepToken;
 
-  llvm::SmallVector<std::pair<NodeTy *, TokenAST *>, 4> Stack;
+  llvm::SmallVector<std::pair<NodeTy *, SepTy *>, 4> Stack;
   NodeTy *Node;
 
   // Optimization notice: the parser is obtained via a function pointer,
@@ -373,22 +297,24 @@ ListTy *Parser::ParseList() {
 
   // We should parse at least one element.
   if((Node = (this->*NodeParser)()))
-    Stack.push_back(std::make_pair(Node, static_cast<TokenAST *>(0)));
+    Stack.push_back(std::make_pair(Node, static_cast<SepTy *>(0)));
 
   // While a list element has been parser, try to parse the next one.
   while(Node) {
-    llvm::OwningPtr<TokenAST> Sep(ParseListSeparator<ListTy, NodeTy, SepTy>());
+    llvm::OwningPtr<SepTy> Sep;
 
     // Separator not found: no more list elements to parse.
-    if(!Sep)
+    if(!llvm::dyn_cast_or_null<SepToken>(Lex.Peek(0)))
       break;
+
+    Sep.reset(ParseTraits::CreateSeparatorAST(Lex.TakeAs<SepToken>()));
 
     // We parsed a separator, so there must be an element.
     if((Node = (this->*NodeParser)())) {
-      std::pair<NodeTy *, TokenAST *> &Prev = Stack.back();
+      std::pair<NodeTy *, SepTy *> &Prev = Stack.back();
       Prev.second = Sep.take();
 
-      Stack.push_back(std::make_pair(Node, static_cast<TokenAST *>(0)));
+      Stack.push_back(std::make_pair(Node, static_cast<SepTy *>(0)));
     }
   }
 
@@ -397,8 +323,8 @@ ListTy *Parser::ParseList() {
   // We reached the innermost parser. Simulate returning from recursive calls by
   // popping elements from the stack and build the tree bottom-up.
   while(!Stack.empty()) {
-    std::pair<NodeTy *, TokenAST *> &Cur = Stack.back();
-    List = CreateList<ListTy, NodeTy, SepTy>(Cur.first, Cur.second, List);
+    std::pair<NodeTy *, SepTy *> &Cur = Stack.back();
+    List = ParseTraits::CreateListAST(Cur.first, Cur.second, List);
 
     Stack.pop_back();
   }
