@@ -13,6 +13,8 @@
 #include "acse/Lex/Lexer.h"
 #include "acse/Parse/AbstractSyntaxTree.h"
 
+#include "llvm/ADT/IntrusiveRefCntPtr.h"
+
 namespace acse {
 
 // This trait is used to parse lists with an arbitrary number of different
@@ -24,6 +26,53 @@ struct ListParseTraits;
 // Tag structure used to eliminate separator checks in the case the list does
 // not employ them. See specializations of ListParseTraits for more info.
 struct ListParseNoSepTag { };
+
+// TODO: comment.
+class PrecedenceTable {
+private:
+  class Table : public llvm::RefCountedBase<Table> {
+  public:
+    static Table *Get() {
+      if(!Instance)
+        Instance = new Table();
+
+      return Instance;
+    }
+
+  private:
+    static Table *Instance;
+
+  private:
+    Table() { Fill(); }
+
+  public:
+    ~Table() { Instance = 0; }
+
+  public:
+    unsigned operator[](Token::Id id) const { return Data[id]; }
+
+  public:
+    void Dump(llvm::raw_ostream &OS = llvm::errs()) const;
+
+  private:
+    void Fill();
+
+  private:
+    uint8_t Data[Token::Count];
+  };
+
+public:
+  PrecedenceTable() : Data(Table::Get()) { }
+
+public:
+  unsigned operator[](Token::Id Id) const { return (*Data)[Id]; }
+
+public:
+  void Dump(llvm::raw_ostream &OS = llvm::errs()) const;
+
+private:
+  llvm::IntrusiveRefCntPtr<Table> Data;
+};
 
 // This class allows to extract an abstract syntax tree -- AST -- from a
 // sequence of LANCE tokens. Parsing is done through an descendent algorithm.
@@ -58,16 +107,16 @@ struct ListParseNoSepTag { };
 //
 // Thus, does LANCE employ left-associativity? Well, initially I decided to go
 // for right associativity, but I forgot to take into account the amount of
-// precedence levels employed by LANCE expressions: 7.
+// precedence levels employed by LANCE expressions: 9.
 //
 // This means that even in the best case -- e.g. parsing an expression made-up
-// of just a constant -- the parsing stack depth will be 7 -- the parser spends
+// of just a constant -- the parsing stack depth will be 9 -- the parser spends
 // a lot of time just calling functions for non-terminal copy rules.
 //
-// So, I decided to use a more smarter algorithm just for expressions parsing:
-// Pratt's "Top Down Operator Precedence Parsing". As a side effect, this
-// algorithm can handle right-associativity -- for, and only for, expression
-// parsing LANCE supports right-associativity.
+// So, I decided to take a look at a more smarter algorithm just for expressions
+// parsing: Pratt's "Top Down Operator Precedence Parsing". As a side effect,
+// this algorithm can handle right-associativity -- for, and only for,
+// expression parsing LANCE supports right-associativity.
 //
 // Code organization is straightforward: the Run method tries to parse the token
 // stream and to built the AST. Each rule in the grammar defines a parser that
@@ -141,6 +190,7 @@ private:
   ArrayAssignmentAST *ParseArrayAssignment();
 
   ExpressionAST *ParseExpression();
+  ExpressionAST *ParsePrimaryExpression();
 
 private:
   // Generic list parsing algorithm for list with no separator. Require
@@ -148,8 +198,8 @@ private:
   template <typename ListTy, typename NodeTy>
   ListTy *ParseList();
 
-  // Generic list parsing algorithm for list with separators. Usage is trivial,
-  // just invoke with the triplet of classes you like. Remember to:
+  // Generic list parsing algorithm for lists with a separator. Usage is
+  // trivial, just invoke with the triplet of classes you like. Remember to:
   //
   // 1) specialize the ListParseTraits trait
   // 2) add the specialization as a friend of class Parser
@@ -158,12 +208,29 @@ private:
   template <typename ListTy, typename NodeTy, typename SepTy>
   ListTy *ParseList();
 
+  // TODO: comment.
+  bool IsBinaryOperator(const Token *Tok) const {
+    return PrecTable[Tok->GetId()] > 0;
+  }
+
+  // TODO: comment.
+  unsigned GetPrecedence(const Token *Tok) const {
+    return PrecTable[Tok->GetId()];
+  }
+
+  // TODO: comment.
+  ExpressionAST *CreateBinaryExpression(ExpressionAST *LHS,
+                                        Token *Oper,
+                                        ExpressionAST *RHS);
+
 private:
   void ReportError(ErrorTy Error, llvm::SMLoc Loc);
 
 private:
   Lexer &Lex;
   bool ErrorsFound;
+
+  PrecedenceTable PrecTable;
 
   llvm::OwningPtr<AbstractSyntaxTree> AST;
 

@@ -11,6 +11,134 @@
 
 using namespace acse;
 
+// TODO: comment.
+namespace {
+
+// TODO: comment.
+template <typename Ty, typename Tp>
+class ParsingFrame {
+public:
+  ParsingFrame(const Ty &First, const Tp &Second) : First(First),
+                                                    Second(Second) { }
+
+  ParsingFrame(const ParsingFrame &That) : First(That.First),
+                                           Second(That.Second) { }
+
+  const ParsingFrame &operator=(const ParsingFrame &That) {
+    if(this != &That) {
+      First = That.First;
+      Second = That.Second;
+    }
+
+    return *this;
+  }
+
+public:
+  Ty &GetFirst() { return First; }
+  Tp &GetSecond() { return Second; }
+
+  void SetFirst(const Ty &Elt) { First = Elt; }
+  void SetSecond(const Tp &Elt) { Second = Elt; }
+
+private:
+  Ty First;
+  Tp Second;
+};
+
+// TODO: comment.
+template <typename Ty, typename Tp>
+ParsingFrame<Ty, Tp> MakeParsingFrame(const Ty &First, const Tp &Second) {
+  return ParsingFrame<Ty, Tp>(First, Second);
+}
+
+// TODO: comment.
+template <typename Ty, size_t InternalStorage>
+class ParsingStack {
+public:
+  typedef typename llvm::SmallVector<Ty, InternalStorage>::iterator iterator;
+
+public:
+  iterator begin() { return Stack.begin(); }
+  iterator end() { return Stack.end(); }
+
+public:
+  ParsingStack() { }
+
+private:
+  ParsingStack(const ParsingStack &That) LLVM_DELETED_FUNCTION;
+  const ParsingStack &operator=(const ParsingStack &That) LLVM_DELETED_FUNCTION;
+
+public:
+  // TODO: implement.
+  ~ParsingStack() { }
+
+public:
+  void push(const Ty &Frame) { Stack.push_back(Frame); }
+  void pop() { Stack.pop_back(); }
+
+  size_t size() const { return Stack.size(); }
+
+private:
+  llvm::SmallVector<Ty, InternalStorage> Stack;
+};
+
+} // End anonymous namespace.
+
+// TODO: comment
+PrecedenceTable::Table *PrecedenceTable::Table::Instance = 0;
+
+// TODO: comment.
+void PrecedenceTable::Table::Fill() {
+  std::memset(Data, 0, sizeof(uint8_t) * Token::Count);
+
+  uint8_t CurPrecedence = 0;
+
+  #define NEXT_PRECEDENCE(O)        \
+  Data[Token::O] = ++CurPrecedence;
+
+  #define SAME_PRECEDENCE(O)      \
+  Data[Token::O] = CurPrecedence;
+
+  // Logical operators.
+  NEXT_PRECEDENCE(LOr);
+  NEXT_PRECEDENCE(LAnd);
+
+  // Bitwise operators.
+  NEXT_PRECEDENCE(BOr);
+  NEXT_PRECEDENCE(BAnd);
+  NEXT_PRECEDENCE(LShift);
+  SAME_PRECEDENCE(RShift);
+
+  // Relational operators.
+  NEXT_PRECEDENCE(Equal);
+  SAME_PRECEDENCE(NotEqual);
+  NEXT_PRECEDENCE(Less);
+  SAME_PRECEDENCE(LessOrEqual);
+  SAME_PRECEDENCE(GreaterOrEqual);
+  SAME_PRECEDENCE(Greater);
+
+  // Algebraic operators.
+  NEXT_PRECEDENCE(Add);
+  SAME_PRECEDENCE(Sub);
+  NEXT_PRECEDENCE(Mul);
+  SAME_PRECEDENCE(Div);
+  SAME_PRECEDENCE(Mod);
+
+  #undef NEXT_PRECEDENCE
+  #undef SAME_PRECEDENCE
+}
+
+// TODO: introduce TableTraits, and use a generic algorithm to print out any
+// table in the compiler -- e.g. operator precedence table and symbol table.
+void PrecedenceTable::Table::Dump(llvm::raw_ostream &OS) const {
+  for(unsigned I = 0, E = Token::Count; I != E; ++I)
+    OS << Token::Id(I) << " -> " << unsigned(Data[I]) << "\n";
+}
+
+void PrecedenceTable::Dump(llvm::raw_ostream &OS) const {
+  Data->Dump(OS);
+}
+
 // program
 //   : var_declarations statements
 bool Parser::Run() {
@@ -487,7 +615,149 @@ ArrayAssignmentAST *Parser::ParseArrayAssignment() {
   return 0;
 }
 
+// expression
+//   : expression *LAnd* expression
+//   | expression *LOr* expression
+//   | expression *BAnd* expression
+//   | expression *BOr* expression
+//   | expression *LShift* expression
+//   | expression *RShift* expression
+//   | expression *Less* expression
+//   | expression *LessOrEqual* expression
+//   | expression *Equal* expression
+//   | expression *NotEqual* expression
+//   | expression *GreaterOrEqual* expression
+//   | expression *Greater* expression
+//   | expression *Add* expression
+//   | expression *Sub* expression
+//   | expression *Mul* expression
+//   | expression *Div* expression
+//   | expression *Mod* expression
+//   | primary_expression
 ExpressionAST *Parser::ParseExpression() {
+  typedef ParsingFrame<Token *, ExpressionAST *> IncompleteExpr;
+
+  ParsingStack<IncompleteExpr, 8> Stack;
+
+  ExpressionAST *Expr = ParsePrimaryExpression();
+
+  if(!Expr)
+    return 0;
+
+  Stack.push(MakeParsingFrame(static_cast<Token *>(0), Expr));
+
+  const Token *TopTok = 0;
+  const Token *CurTok = Lex.Peek(0);
+
+  // TODO: comment.
+  while(IsBinaryOperator(CurTok)) {
+    while(GetPrecedence(TopTok) < GetPrecedence(CurTok)) {
+      llvm::OwningPtr<Token> Oper(Lex.Take());
+
+      Expr = ParsePrimaryExpression();
+
+      if(!Expr)
+        return 0;
+
+      Stack.push(MakeParsingFrame(Oper.take(), Expr));
+
+      TopTok = CurTok;
+      CurTok = Lex.Peek(0);
+    }
+
+    while(GetPrecedence(TopTok) > GetPrecedence(CurTok)) {
+      IncompleteExpr *CurExpr = Stack.end() - 1;
+      IncompleteExpr *TopExpr = Stack.end() - 2;
+
+      ExpressionAST *LHS = TopExpr->GetSecond();
+      Token *Oper = CurExpr->GetFirst();
+      ExpressionAST *RHS = CurExpr->GetSecond();
+
+      TopExpr->SetSecond(CreateBinaryExpression(LHS, Oper, RHS));
+
+      Stack.pop();
+
+      TopTok = CurExpr->GetFirst();
+    }
+  }
+
+  assert(Stack.size() == 1 && "Corrupted expressions stack");
+
+  IncompleteExpr *TopExpr = Stack.end() - 1;
+  ExpressionAST *FinalExpr = TopExpr->GetSecond();
+
+  Stack.pop();
+
+  return FinalExpr;
+}
+
+// primary_expression
+//   : *LPar* expression *RPar*
+//   | *BNot* expression
+//   | *Sub* expression
+//   | *Identifier*
+//   | *Number*
+ExpressionAST *Parser::ParsePrimaryExpression() {
+  const Token *CurTok = Lex.Peek(0);
+
+  // No token available, hence nothing to parse.
+  if(!CurTok)
+    return 0;
+
+  ExpressionAST *Expr = 0;
+
+  switch(CurTok->GetId()) {
+  case Token::LPar: {
+    llvm::OwningPtr<LParAST> LPar(new LParAST(Lex.TakeAs<LParTok>()));
+    llvm::OwningPtr<ExpressionAST> InnerExpr(ParseExpression());
+
+    if(InnerExpr && llvm::dyn_cast_or_null<RParTok>(Lex.Peek(0))) {
+      RParAST *RPar = new RParAST(Lex.TakeAs<RParTok>());
+      Expr = new NestedExprAST(LPar.take(), InnerExpr.take(), RPar);
+    }
+
+    break;
+  }
+
+  case Token::BNot: {
+    llvm::OwningPtr<BNotAST> BNot(new BNotAST(Lex.TakeAs<BNotTok>()));
+
+    if(ExpressionAST *InnerExpr = ParseExpression())
+      Expr = new BNotExprAST(BNot.take(), InnerExpr);
+  }
+
+  case Token::Sub: {
+    llvm::OwningPtr<SubAST> Sub(new SubAST(Lex.TakeAs<SubTok>()));
+
+    if(ExpressionAST *InnerExpr = ParseExpression())
+      Expr = new MinusExprAST(Sub.take(), InnerExpr);
+
+    break;
+  }
+
+  case Token::Identifier: {
+    IdentifierAST *Id = new IdentifierAST(Lex.TakeAs<IdentifierTok>());
+    Expr = new IdentifierExprAST(Id);
+    break;
+  }
+
+  case Token::Number: {
+    NumberAST *Num = new NumberAST(Lex.TakeAs<NumberTok>());
+    Expr = new NumberExprAST(Num);
+    break;
+  }
+
+  default:
+    break;
+  }
+
+  return Expr;
+}
+
+// TODO: implement.
+ExpressionAST *Parser::CreateBinaryExpression(ExpressionAST *LHS,
+                                              Token *Oper,
+                                              ExpressionAST *RHS) {
   return 0;
 }
 

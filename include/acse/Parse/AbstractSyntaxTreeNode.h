@@ -435,19 +435,6 @@ protected:
 };
 
 // TODO: comment.
-#define UNARY_EXPR_AST(I)                                         \
-class I ## ExprAST : public UnaryExprAST {                        \
-public:                                                           \
-  static inline bool classof(const AbstractSyntaxTreeNode *AST) { \
-    return AST->GetId() == I ## Expr;                             \
-  }                                                               \
-                                                                  \
-public:                                                           \
-  I ## ExprAST(I ## AST *Operator, ExpressionAST *Operand)        \
-    : UnaryExprAST(I ## Expr, Operator, Operand) { }              \
-};
-
-// TODO: comment.
 #define BINARY_EXPR_AST(I)                                              \
 class I ## ExprAST : public BinaryExprAST {                             \
 public:                                                                 \
@@ -645,6 +632,61 @@ public:
 // Non-terminal rule ASTs.
 //
 
+// TODO: comment about absence of 1:1 mapping with grammar rules.
+
+class NestedExprAST : public ExpressionAST {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == NestedExpr;
+  }
+
+public:
+  NestedExprAST(LParAST *Open, ExpressionAST *Expr, RParAST *Close)
+    : ExpressionAST(NestedExpr, Open, Expr, Close) { }
+};
+
+class BNotExprAST : public UnaryExprAST {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == BNotExpr;
+  }
+
+public:
+  BNotExprAST(BNotAST *Operand, ExpressionAST *Operator)
+    : UnaryExprAST(BNotExpr, Operand, Operator) { }
+};
+
+class MinusExprAST : public UnaryExprAST {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == MinusExpr;
+  }
+
+public:
+  MinusExprAST(SubAST *Operand, ExpressionAST *Operator)
+    : UnaryExprAST(MinusExpr, Operand, Operator) { }
+};
+
+class IdentifierExprAST : public ExpressionAST {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == IdentifierExpr;
+  }
+
+public:
+  IdentifierExprAST(IdentifierAST *Id) : ExpressionAST(IdentifierExpr, Id) { }
+};
+
+class NumberExprAST : public ExpressionAST {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == NumberExpr;
+  }
+
+public:
+  NumberExprAST(NumberAST *N) : ExpressionAST(NumberExpr, N) { }
+};
+
 // Algebraic expressions.
 BINARY_EXPR_AST(Add)
 BINARY_EXPR_AST(Sub)
@@ -663,7 +705,6 @@ BINARY_EXPR_AST(Greater)
 // Bitwise expressions.
 BINARY_EXPR_AST(BAnd)
 BINARY_EXPR_AST(BOr)
-BINARY_EXPR_AST(BNot)
 BINARY_EXPR_AST(LShift)
 BINARY_EXPR_AST(RShift)
 
@@ -671,7 +712,6 @@ BINARY_EXPR_AST(RShift)
 BINARY_EXPR_AST(LAnd)
 BINARY_EXPR_AST(LOr)
 
-#undef UNARY_EXPR_AST
 #undef BINARY_EXPR_AST
 
 // scalar_assignment

@@ -70,10 +70,16 @@ AST(GreaterExpr)        // '>'
 // Non-terminal rule ASTs: bitwise expressions.
 AST(BAndExpr)   // '&'
 AST(BOrExpr)    // '|'
-AST(BNotExpr)   // '!'
 AST(LShiftExpr) // '<<'
 AST(RShiftExpr) // '>>'
 
 // Non-terminal rule ASTs: logical expressions.
 AST(LAndExpr) // '&&'
 AST(LOrExpr)  // '||'
+
+// Non-terminal rule ASTs: primary expressions.
+AST(NestedExpr)
+AST(BNotExpr)
+AST(MinusExpr)
+AST(IdentifierExpr)
+AST(NumberExpr)
