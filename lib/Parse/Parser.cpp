@@ -798,7 +798,7 @@ ExpressionAST *Parser::ParsePrimaryExpression() {
     Id.reset(new IdentifierAST(Lex.TakeAs<IdentifierTok>()));
 
     if(!llvm::dyn_cast_or_null<LSquareTok>(Lex.Peek(0)))
-      Expr = new IdentifierExprAST(Id.take());
+      Expr = new ScalarIdentifierExprAST(Id.take());
 
     else {
       llvm::OwningPtr<LSquareAST> OpenSquare;

@@ -81,6 +81,6 @@ AST(LOrExpr)  // '||'
 AST(NestedExpr)
 AST(BNotExpr)
 AST(MinusExpr)
-AST(IdentifierExpr)
+AST(ScalarIdentifierExpr)
 AST(ArrayIdentifierExpr)
 AST(NumberExpr)

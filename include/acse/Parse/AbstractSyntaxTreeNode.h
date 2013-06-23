@@ -676,14 +676,15 @@ public:
     : UnaryExprAST(MinusExpr, Operand, Operator) { }
 };
 
-class IdentifierExprAST : public ExpressionAST {
+class ScalarIdentifierExprAST : public ExpressionAST {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
-    return AST->GetId() == IdentifierExpr;
+    return AST->GetId() == ScalarIdentifierExpr;
   }
 
 public:
-  IdentifierExprAST(IdentifierAST *Id) : ExpressionAST(IdentifierExpr, Id) { }
+  ScalarIdentifierExprAST(IdentifierAST *Id)
+    : ExpressionAST(ScalarIdentifierExpr, Id) { }
 };
 
 class ArrayIdentifierExprAST : public ExpressionAST {
