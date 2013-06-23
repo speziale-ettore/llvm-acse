@@ -27,7 +27,11 @@ struct DOTGraphTraits<const AbstractSyntaxTreeNode *>
     std::string Label;
 
     llvm::raw_string_ostream OS(Label);
-    OS << Node->GetId();
+
+    if(llvm::isa<ExpressionAST>(Node))
+      OS << "Expression";
+    else
+      OS << Node->GetId();
 
     return Label;
   }
