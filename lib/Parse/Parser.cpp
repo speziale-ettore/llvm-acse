@@ -611,8 +611,64 @@ ScalarAssignmentAST *Parser::ParseScalarAssignment() {
   return Stmt;
 }
 
+// array_assignment
+//   : *Identifier* *LSquare* expression *RSquare* *Assign* expression
 ArrayAssignmentAST *Parser::ParseArrayAssignment() {
-  return 0;
+  llvm::OwningPtr<IdentifierAST> Id;
+  llvm::OwningPtr<LSquareAST> OpenSquare;
+  llvm::OwningPtr<ExpressionAST> Subscript;
+  llvm::OwningPtr<RSquareAST> ClosedSquare;
+  llvm::OwningPtr<AssignAST> Assign;
+
+  ArrayAssignmentAST *Stmt = 0;
+
+  // First we need the array identifier.
+   if(!llvm::dyn_cast_or_null<IdentifierTok>(Lex.Peek(0))) {
+    ReportError(ExpectedIdentifier, Lex.GetCurrentLoc());
+    return 0;
+  }
+
+  Id.reset(new IdentifierAST(Lex.TakeAs<IdentifierTok>()));
+
+  // Then we need the subscript. It must be prefixed by square.
+  if(!llvm::dyn_cast_or_null<LSquareTok>(Lex.Peek(0))) {
+    ReportError(ExpectedLSquare, Lex.GetCurrentLoc());
+    return 0;
+  }
+
+  OpenSquare.reset(new LSquareAST(Lex.TakeAs<LSquareTok>()));
+
+  // The subscript itself is an expression.
+  Subscript.reset(ParseExpression());
+
+  if(!Subscript)
+    return 0;
+
+  // The subscript is then followed by a square.
+  if(!llvm::dyn_cast_or_null<RSquareTok>(Lex.Peek(0))) {
+    ReportError(ExpectedRSquare, Lex.GetCurrentLoc());
+    return 0;
+  }
+
+  ClosedSquare.reset(new RSquareAST(Lex.TakeAs<RSquareTok>()));
+
+  // Assignment token expected.
+  if(!llvm::dyn_cast_or_null<AssignTok>(Lex.Peek(0))) {
+    ReportError(ExpectedAssign, Lex.GetCurrentLoc());
+    return 0;
+  }
+
+  Assign.reset(new AssignAST(Lex.TakeAs<AssignTok>()));
+
+  // At last we expect an expression as the RHS.
+  if(ExpressionAST *RHS = ParseExpression())
+    Stmt = new ArrayAssignmentAST(Id.take(),
+                                  OpenSquare.take(),
+                                  Subscript.take(),
+                                  ClosedSquare.take(),
+                                  Assign.take(),
+                                  RHS);
+  return Stmt;
 }
 
 // expression

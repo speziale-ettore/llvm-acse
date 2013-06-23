@@ -728,11 +728,27 @@ public:
     : AbstractSyntaxTreeNode(ScalarAssignment, LHS, Assign, RHS) { }
 };
 
+// array_assignment
+//   : *Identifier* *LSquare* expression *RSquare* *Assign* expression
 class ArrayAssignmentAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == ArrayAssignment;
   }
+
+public:
+  ArrayAssignmentAST(IdentifierAST *Id,
+                     LSquareAST *LSquare,
+                     ExpressionAST *Subscript,
+                     RSquareAST *RSquare,
+                     AssignAST *Assign,
+                     ExpressionAST *RHS)
+    : AbstractSyntaxTreeNode(ArrayAssignment,
+                             LSquare,
+                             Subscript,
+                             RSquare,
+                             Assign,
+                             RHS) { }
 };
 
 // assign_statement
