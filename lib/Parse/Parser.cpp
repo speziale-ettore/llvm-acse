@@ -752,6 +752,7 @@ ExpressionAST *Parser::ParseExpression() {
 //   | *BNot* expression
 //   | *Sub* expression
 //   | *Identifier*
+//   | *Identifier* *LSquare* expression *RSquare*
 //   | *Number*
 ExpressionAST *Parser::ParsePrimaryExpression() {
   const Token *CurTok = Lex.Peek(0);
@@ -792,14 +793,48 @@ ExpressionAST *Parser::ParsePrimaryExpression() {
   }
 
   case Token::Identifier: {
-    IdentifierAST *Id = new IdentifierAST(Lex.TakeAs<IdentifierTok>());
-    Expr = new IdentifierExprAST(Id);
+    llvm::OwningPtr<IdentifierAST> Id;
+
+    Id.reset(new IdentifierAST(Lex.TakeAs<IdentifierTok>()));
+
+    if(!llvm::dyn_cast_or_null<LSquareTok>(Lex.Peek(0)))
+      Expr = new IdentifierExprAST(Id.take());
+
+    else {
+      llvm::OwningPtr<LSquareAST> OpenSquare;
+      llvm::OwningPtr<ExpressionAST> Subscript;
+      llvm::OwningPtr<RSquareAST> ClosedSquare;
+
+      if(!llvm::dyn_cast_or_null<LSquareTok>(Lex.Peek(0))) {
+        ReportError(ExpectedLSquare, Lex.GetCurrentLoc());
+        return 0;
+      }
+
+      OpenSquare.reset(new LSquareAST(Lex.TakeAs<LSquareTok>()));
+
+      Subscript.reset(ParseExpression());
+
+      if(!Subscript)
+        return 0;
+
+      if(!llvm::dyn_cast_or_null<RSquareTok>(Lex.Peek(0))) {
+        ReportError(ExpectedRSquare, Lex.GetCurrentLoc());
+        return 0;
+      }
+
+      ClosedSquare.reset(new RSquareAST(Lex.TakeAs<RSquareTok>()));
+
+      Expr = new ArrayIdentifierExprAST(Id.take(),
+                                        OpenSquare.take(),
+                                        Subscript.take(),
+                                        ClosedSquare.take());
+    }
+
     break;
   }
 
   case Token::Number: {
-    NumberAST *Num = new NumberAST(Lex.TakeAs<NumberTok>());
-    Expr = new NumberExprAST(Num);
+    Expr = new NumberExprAST(new NumberAST(Lex.TakeAs<NumberTok>()));
     break;
   }
 

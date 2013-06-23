@@ -403,6 +403,15 @@ protected:
                 TokenAST *End)
     : AbstractSyntaxTreeNode(Identifier, Start, Operand, End)
       { }
+
+  // TODO: comment.
+  ExpressionAST(Id Identifier,
+                AbstractSyntaxTreeNode *LeftOperand,
+                TokenAST *Start,
+                AbstractSyntaxTreeNode *RightOperand,
+                TokenAST *End)
+    : AbstractSyntaxTreeNode(Identifier, LeftOperand, Start, RightOperand, End)
+      { }
 };
 
 // TODO: comment.
@@ -675,6 +684,20 @@ public:
 
 public:
   IdentifierExprAST(IdentifierAST *Id) : ExpressionAST(IdentifierExpr, Id) { }
+};
+
+class ArrayIdentifierExprAST : public ExpressionAST {
+public:
+  static bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == ArrayIdentifierExpr;
+  }
+
+public:
+  ArrayIdentifierExprAST(IdentifierAST *Id,
+                         LSquareAST *LSquare,
+                         ExpressionAST *Subscript,
+                         RSquareAST *RSquare)
+    : ExpressionAST(ArrayIdentifierExpr, Id, LSquare, Subscript, RSquare) { }
 };
 
 class NumberExprAST : public ExpressionAST {
