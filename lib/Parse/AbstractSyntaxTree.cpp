@@ -65,19 +65,22 @@ public:
 public:
   #define AST(I)                               \
   NextAction Visit ## I(const I ## AST &AST) { \
-    PrintInEdge() << AST.GetId() << "\n";     \
+    PrintInEdge();                             \
+    PrintRule(AST);                            \
+    PrintOutEdge();                            \
+                                               \
     return Continue;                           \
   }
   #include "acse/Parse/AbstractSyntaxTreeNode.def"
   #undef AST
 
 private:
-  llvm::raw_ostream &PrintInEdge() {
+  void PrintInEdge() {
     iterator I = begin(), E = end();
 
     // Root has not predecessors: nothing to print.
     if(I == E)
-      return OS;
+      return;
 
     OS << " ";
     for(iterator J = I++; I != E; ++I, ++J) {
@@ -88,7 +91,18 @@ private:
       OS << "    ";
     }
 
-    return OS << "+-> ";
+    OS << "+-> ";
+  }
+
+  void PrintRule(const AbstractSyntaxTreeNode &AST) {
+    if(llvm::isa<ExpressionAST>(AST))
+      OS << "Expression";
+    else
+      OS << AST.GetId();
+  }
+
+  void PrintOutEdge() {
+    OS << "\n";
   }
 
 private:

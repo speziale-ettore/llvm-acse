@@ -80,7 +80,7 @@ public:
     MinTokenId = LineComment,
     MaxTokenId = Identifier,
     MinExprId = AddExpr,
-    MaxExprId = LOrExpr
+    MaxExprId = NumberExpr
   };
 
 private:
