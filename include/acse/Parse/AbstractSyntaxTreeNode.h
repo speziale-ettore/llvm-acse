@@ -786,10 +786,10 @@ public:
 
 public:
   AssignStatementAST(ScalarAssignmentAST *Assign)
-    : AbstractSyntaxTreeNode(ScalarAssignment, Assign) { }
+    : AbstractSyntaxTreeNode(AssignStatement, Assign) { }
 
   AssignStatementAST(ArrayAssignmentAST *Assign)
-    : AbstractSyntaxTreeNode(ScalarAssignment, Assign) { }
+    : AbstractSyntaxTreeNode(AssignStatement, Assign) { }
 };
 
 class ReadWriteStatementAST : public AbstractSyntaxTreeNode {
