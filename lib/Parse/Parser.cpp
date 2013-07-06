@@ -37,6 +37,9 @@ public:
   Ty &GetFirst() { return First; }
   Tp &GetSecond() { return Second; }
 
+  const Ty &GetFirst() const { return First; }
+  const Tp &GetSecond() const { return Second; }
+
   void SetFirst(const Ty &Elt) { First = Elt; }
   void SetSecond(const Tp &Elt) { Second = Elt; }
 
@@ -54,12 +57,28 @@ ParsingFrame<Ty, Tp> MakeParsingFrame(const Ty &First, const Tp &Second) {
 // TODO: comment.
 template <typename Ty, size_t InternalStorage>
 class ParsingStack {
+private:
+  typedef llvm::SmallVector<Ty, InternalStorage> Storage;
+
 public:
-  typedef typename llvm::SmallVector<Ty, InternalStorage>::iterator iterator;
+  typedef typename Storage::iterator iterator;
+  typedef typename Storage::const_iterator const_iterator;
+
+  typedef typename Storage::reverse_iterator reverse_iterator;
+  typedef typename Storage::const_reverse_iterator const_reverse_iterator;
 
 public:
   iterator begin() { return Stack.begin(); }
   iterator end() { return Stack.end(); }
+
+  const_iterator begin() const { return Stack.begin(); }
+  const_iterator end() const { return Stack.end(); }
+
+  reverse_iterator rbegin() { return Stack.rbegin(); }
+  reverse_iterator rend() { return Stack.rend(); }
+
+  const_reverse_iterator rbegin() const { return Stack.rbegin(); }
+  const_reverse_iterator rend() const { return  Stack.rend(); }
 
 public:
   ParsingStack() { }
@@ -78,9 +97,35 @@ public:
 
   size_t size() const { return Stack.size(); }
 
+public:
+  // TODO: introduce and define TableTraits to print the stack?
+  void Dump(llvm::raw_ostream &OS = llvm::errs()) const {
+    for(const_reverse_iterator I = rbegin(), E = rend(); I != E; ++I)
+      OS << "<" << I->GetFirst() << "," << I->GetSecond() << ">" << "\n";
+  }
+
 private:
-  llvm::SmallVector<Ty, InternalStorage> Stack;
+  Storage Stack;
 };
+
+// TODO: comment.
+template <typename OperTy>
+OperTy *MakeOperatorAST(Token *Oper) {
+  typedef typename OperTy::Token OperTokTy;
+
+  return new OperTy(llvm::cast<OperTokTy>(Oper));
+}
+
+// TODO: comment.
+template <typename ExprTy, typename OperTy>
+ExpressionAST *MakeExpressionAST(ExpressionAST *LHS,
+                                 Token *Oper,
+                                 ExpressionAST *RHS)
+{
+  typedef typename OperTy::Token OperTokTy;
+
+  return new ExprTy(LHS, MakeOperatorAST<OperTy>(Oper), RHS);
+}
 
 } // End anonymous namespace.
 
@@ -137,6 +182,44 @@ void PrecedenceTable::Table::Dump(llvm::raw_ostream &OS) const {
 
 void PrecedenceTable::Dump(llvm::raw_ostream &OS) const {
   Data->Dump(OS);
+}
+
+// TODO: comment.
+ExpressionBuilder::Table *ExpressionBuilder::Table::Instance = 0;
+
+// TODO: comment.
+void ExpressionBuilder::Table::Fill() {
+  std::memset(Data, 0, sizeof(Builder) * Token::Count);
+
+  #define OPERATOR(O)                                           \
+  Data[Token::O] = MakeExpressionAST<O ## ExprAST, O ## AST>;
+
+  // Logical operators.
+  OPERATOR(LOr);
+  OPERATOR(LAnd);
+
+  // Bitwise operators.
+  OPERATOR(BOr);
+  OPERATOR(BAnd);
+  OPERATOR(LShift);
+  OPERATOR(RShift);
+
+  // Relational operators.
+  OPERATOR(Equal);
+  OPERATOR(NotEqual);
+  OPERATOR(Less);
+  OPERATOR(LessOrEqual);
+  OPERATOR(GreaterOrEqual);
+  OPERATOR(Greater);
+
+  // Algebraic operators.
+  OPERATOR(Add);
+  OPERATOR(Sub);
+  OPERATOR(Mul);
+  OPERATOR(Div);
+  OPERATOR(Mod);
+
+  #undef OPERATOR
 }
 
 // program
@@ -721,7 +804,7 @@ ExpressionAST *Parser::ParseExpression() {
       CurTok = Lex.Peek(0);
     }
 
-    while(GetPrecedence(TopTok) > GetPrecedence(CurTok)) {
+    while(GetPrecedence(TopTok) >= GetPrecedence(CurTok)) {
       IncompleteExpr *CurExpr = Stack.end() - 1;
       IncompleteExpr *TopExpr = Stack.end() - 2;
 
@@ -733,7 +816,7 @@ ExpressionAST *Parser::ParseExpression() {
 
       Stack.pop();
 
-      TopTok = CurExpr->GetFirst();
+      TopTok = TopExpr->GetFirst();
     }
   }
 
@@ -781,6 +864,8 @@ ExpressionAST *Parser::ParsePrimaryExpression() {
 
     if(ExpressionAST *InnerExpr = ParseExpression())
       Expr = new BNotExprAST(BNot.take(), InnerExpr);
+
+    break;
   }
 
   case Token::Sub: {
@@ -843,13 +928,6 @@ ExpressionAST *Parser::ParsePrimaryExpression() {
   }
 
   return Expr;
-}
-
-// TODO: implement.
-ExpressionAST *Parser::CreateBinaryExpression(ExpressionAST *LHS,
-                                              Token *Oper,
-                                              ExpressionAST *RHS) {
-  return 0;
 }
 
 void Parser::ReportError(ErrorTy Error, llvm::SMLoc Loc) {

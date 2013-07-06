@@ -74,6 +74,56 @@ private:
   llvm::IntrusiveRefCntPtr<Table> Data;
 };
 
+// TODO: comment.
+class ExpressionBuilder {
+private:
+  class Table : public llvm::RefCountedBase<Table> {
+  public:
+    typedef ExpressionAST *(*Builder)(ExpressionAST *,
+                                      Token *,
+                                      ExpressionAST *);
+
+  public:
+    static Table *Get() {
+      if(!Instance)
+        Instance = new Table();
+
+      return Instance;
+    }
+
+  private:
+    static Table *Instance;
+
+  private:
+    Table() { Fill(); }
+
+  public:
+    ~Table() { Instance = 0; }
+
+  public:
+    Builder operator[](const Token *Tok) const { return Data[Tok->GetId()]; }
+
+  private:
+    void Fill();
+
+  private:
+    Builder Data[Token::Count];
+  };
+
+public:
+  ExpressionBuilder() : Data(Table::Get()) { }
+
+public:
+  ExpressionAST *Create(ExpressionAST *LHS,
+                        Token *Oper,
+                        ExpressionAST *RHS) const {
+    return (*Data)[Oper](LHS, Oper, RHS );
+  }
+
+private:
+  llvm::IntrusiveRefCntPtr<Table> Data;
+};
+
 // This class allows to extract an abstract syntax tree -- AST -- from a
 // sequence of LANCE tokens. Parsing is done through an descendent algorithm.
 //
@@ -210,18 +260,20 @@ private:
 
   // TODO: comment.
   bool IsBinaryOperator(const Token *Tok) const {
-    return PrecTable[Tok->GetId()] > 0;
+    return Tok && PrecTable[Tok->GetId()] > 0;
   }
 
   // TODO: comment.
   unsigned GetPrecedence(const Token *Tok) const {
-    return PrecTable[Tok->GetId()];
+    return Tok ? PrecTable[Tok->GetId()] + 1 : 0;
   }
 
   // TODO: comment.
   ExpressionAST *CreateBinaryExpression(ExpressionAST *LHS,
                                         Token *Oper,
-                                        ExpressionAST *RHS);
+                                        ExpressionAST *RHS) const {
+    return ExprBuilder.Create(LHS, Oper, RHS);
+  }
 
 private:
   void ReportError(ErrorTy Error, llvm::SMLoc Loc);
@@ -231,6 +283,7 @@ private:
   bool ErrorsFound;
 
   PrecedenceTable PrecTable;
+  ExpressionBuilder ExprBuilder;
 
   llvm::OwningPtr<AbstractSyntaxTree> AST;
 
