@@ -11,10 +11,16 @@
 
 using namespace acse;
 
-// TODO: comment.
+// For efficient parsing we need to define some specialized data structures. Do
+// that here, in an anonymous namespace since they are used only on this file.
 namespace {
 
-// TODO: comment.
+// Parsing algorithms are usually recursive, however when it comes the time of
+// implementing them it is needed to switch to an iterative version in order to
+// achieve good performance.
+//
+// This class simulate a function call frame, so the parse can simulate
+// recursive calls without using the implicit stack frame.
 template <typename Ty, typename Tp>
 class ParsingFrame {
 public:
@@ -48,13 +54,17 @@ private:
   Tp Second;
 };
 
-// TODO: comment.
+// Utility function to create an instance of a parsing frame by deriving its
+// generic arguments from the static type of the function arguments.
 template <typename Ty, typename Tp>
 ParsingFrame<Ty, Tp> MakeParsingFrame(const Ty &First, const Tp &Second) {
   return ParsingFrame<Ty, Tp>(First, Second);
 }
 
-// TODO: comment.
+// A parsing stack allows to simulate recursive calls, often found in parsing
+// algorithms. Moreover, it provides some utility member functions to inspect
+// its status. It also keep care of freeing memory when an error is encountered
+// during parsing -- see destructor.
 template <typename Ty, size_t InternalStorage>
 class ParsingStack {
 private:
@@ -88,7 +98,7 @@ private:
   const ParsingStack &operator=(const ParsingStack &That) LLVM_DELETED_FUNCTION;
 
 public:
-  // TODO: implement.
+  // TODO: implement + comment.
   ~ParsingStack() { }
 
 public:
@@ -108,7 +118,8 @@ private:
   Storage Stack;
 };
 
-// TODO: comment.
+// Utility function to create a TokenAST representing an operator for a given
+// Token.
 template <typename OperTy>
 OperTy *MakeOperatorAST(Token *Oper) {
   typedef typename OperTy::Token OperTokTy;
@@ -116,27 +127,27 @@ OperTy *MakeOperatorAST(Token *Oper) {
   return new OperTy(llvm::cast<OperTokTy>(Oper));
 }
 
-// TODO: comment.
+// Utility function to create an AST for a binary expression starting from the
+// operand ASTs and the operator token.
 template <typename ExprTy, typename OperTy>
 ExpressionAST *MakeExpressionAST(ExpressionAST *LHS,
                                  Token *Oper,
                                  ExpressionAST *RHS)
 {
-  typedef typename OperTy::Token OperTokTy;
-
   return new ExprTy(LHS, MakeOperatorAST<OperTy>(Oper), RHS);
 }
 
 } // End anonymous namespace.
 
-// TODO: comment
 PrecedenceTable::Table *PrecedenceTable::Table::Instance = 0;
 
-// TODO: comment.
+// Fill the precedence table. Please notice that all precedences are > 0 since
+// precedence 0 is a special value used by the parsing algorithm to detect the
+// root expression.
 void PrecedenceTable::Table::Fill() {
-  std::memset(Data, 0, sizeof(uint8_t) * Token::Count);
+  std::memset(Data, Table::MinPrecedence, sizeof(uint8_t) * Token::Count);
 
-  uint8_t CurPrecedence = 0;
+  uint8_t CurPrecedence = Table::MinPrecedence;
 
   #define NEXT_PRECEDENCE(O)        \
   Data[Token::O] = ++CurPrecedence;
@@ -184,14 +195,12 @@ void PrecedenceTable::Dump(llvm::raw_ostream &OS) const {
   Data->Dump(OS);
 }
 
-// TODO: comment.
 ExpressionBuilder::Table *ExpressionBuilder::Table::Instance = 0;
 
-// TODO: comment.
 void ExpressionBuilder::Table::Fill() {
   std::memset(Data, 0, sizeof(Builder) * Token::Count);
 
-  #define OPERATOR(O)                                           \
+  #define OPERATOR(O)                                         \
   Data[Token::O] = MakeExpressionAST<O ## ExprAST, O ## AST>;
 
   // Logical operators.
@@ -780,16 +789,22 @@ ExpressionAST *Parser::ParseExpression() {
 
   ExpressionAST *Expr = ParsePrimaryExpression();
 
+  // We need at lease one expression to start parsing.
   if(!Expr)
     return 0;
 
+  // Initialize the parsing stack.
   Stack.push(MakeParsingFrame(static_cast<Token *>(0), Expr));
 
   const Token *TopTok = 0;
   const Token *CurTok = Lex.Peek(0);
 
-  // TODO: comment.
+  // Operator precedence parsing for binary expressions is very simple. The
+  // algorithm keep a stack. On the top of the stack there is an operator,
+  // together with its right operand.
   while(IsBinaryOperator(CurTok)) {
+    // If the current token has an higher precedence that the one on the top of
+    // the stack, top that means we have to evaluate it first.
     while(GetPrecedence(TopTok) < GetPrecedence(CurTok)) {
       llvm::OwningPtr<Token> Oper(Lex.Take());
 
@@ -798,20 +813,28 @@ ExpressionAST *Parser::ParseExpression() {
       if(!Expr)
         return 0;
 
+      // Thus, push a new frame on the parsing stack.
       Stack.push(MakeParsingFrame(Oper.take(), Expr));
 
       TopTok = CurTok;
       CurTok = Lex.Peek(0);
     }
 
+    // The other case is when the precedence of the current token do not exceed
+    // the one of the token at the top of the stack. That means that the
+    // operand on the top of the stack is linked to the former operator.
     while(GetPrecedence(TopTok) >= GetPrecedence(CurTok)) {
       IncompleteExpr *CurExpr = Stack.end() - 1;
       IncompleteExpr *TopExpr = Stack.end() - 2;
 
+      // We can thus reduce a binary expression tree. The left operand is found
+      // on the last but one entry of the stack.
       ExpressionAST *LHS = TopExpr->GetSecond();
       Token *Oper = CurExpr->GetFirst();
       ExpressionAST *RHS = CurExpr->GetSecond();
 
+      // Which, in turn, see its right operand replaced with the new expression
+      // AST.
       TopExpr->SetSecond(CreateBinaryExpression(LHS, Oper, RHS));
 
       Stack.pop();
@@ -820,11 +843,15 @@ ExpressionAST *Parser::ParseExpression() {
     }
   }
 
+  // At the end, the stack should store only one entry, which actually is the
+  // root of a whole expression AST.
   assert(Stack.size() == 1 && "Corrupted expressions stack");
 
   IncompleteExpr *TopExpr = Stack.end() - 1;
   ExpressionAST *FinalExpr = TopExpr->GetSecond();
 
+  // Remember to remove the last element of the stack, otherwise it will be
+  // freed by the stack destructor.
   Stack.pop();
 
   return FinalExpr;

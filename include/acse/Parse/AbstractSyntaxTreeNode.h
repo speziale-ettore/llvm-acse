@@ -79,8 +79,14 @@ public:
     // Special enum values.
     MinTokenId = LineComment,
     MaxTokenId = Identifier,
+
+    // Special enum values for expressions.
     MinExprId = AddExpr,
-    MaxExprId = NumberExpr
+    MaxExprId = NumberExpr,
+    MinUnaryExprId = BNotExpr,
+    MaxUnaryExprId = MinusExpr,
+    MinBinaryExprId = AddExpr,
+    MaxBinaryExprId = LOrExpr
   };
 
 private:
@@ -367,7 +373,10 @@ public:                                                           \
   I ## AST(I ## Tok *Tok) : TokenAST(I, Tok) { }                  \
 };
 
-// TODO: comment.
+// This class is roughly the equivalent of the 'expression' non-terminal in the
+// grammar. Please notice that this class is abstract. The constructors it
+// provides are used by subclasses -- one for each type of expression -- to
+// initialize the expression tree.
 class ExpressionAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
@@ -375,20 +384,23 @@ public:
   }
 
 protected:
-  // TODO: comment.
+  // Constructor used for very simple expressions, which do not have and
+  // operator and consist of only one operand -- e.g. some primary expressions.
   ExpressionAST(Id Identifier,
                 AbstractSyntaxTreeNode *Operand)
     : AbstractSyntaxTreeNode(Identifier, Operand)
       { }
 
-  // TODO: comment.
+  // Constructor used by unary expressions, made up of an operator followed by
+  // an operand.
   ExpressionAST(Id Identifier,
                 TokenAST *Operator,
                 AbstractSyntaxTreeNode *Operand)
     : AbstractSyntaxTreeNode(Identifier, Operator, Operand)
       { }
 
-  // TODO: comment.
+  // Constructor for binary infix expressions. They are made up by an operand --
+  // e.g. '+' -- surrounded by two operators.
   ExpressionAST(Id Identifier,
                 AbstractSyntaxTreeNode *LeftOperand,
                 TokenAST *Operator,
@@ -396,7 +408,7 @@ protected:
     : AbstractSyntaxTreeNode(Identifier, LeftOperand, Operator, RightOperand)
       { }
 
-  // TODO: comment.
+  // Specialized constructor for nested expressions.
   ExpressionAST(Id Identifier,
                 TokenAST *Start,
                 AbstractSyntaxTreeNode *Operand,
@@ -404,7 +416,7 @@ protected:
     : AbstractSyntaxTreeNode(Identifier, Start, Operand, End)
       { }
 
-  // TODO: comment.
+  // Another specialized constructor. This one is for array expressions.
   ExpressionAST(Id Identifier,
                 AbstractSyntaxTreeNode *LeftOperand,
                 TokenAST *Start,
@@ -414,12 +426,12 @@ protected:
       { }
 };
 
-// TODO: comment.
+// An unary expression is made up of an operator followed by an operand. This is
+// a simple tag class that should define some useful accessors.
 class UnaryExprAST : public ExpressionAST {
 public:
-  // TODO: comment + implement.
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
-    return false;
+    return MinUnaryExprId <= AST->GetId() && AST->GetId() <= MaxUnaryExprId;
   }
 
 protected:
@@ -427,12 +439,12 @@ protected:
     : ExpressionAST(Identifier, Operator, Operand) { }
 };
 
-// TODO: comment.
+// A binary expression is made up of an operator surrounded by two operands.
+// This is a simple tag class that should define some useful accessors.
 class BinaryExprAST : public ExpressionAST {
 public:
-  // TODO: comment + implement.
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
-    return false;
+    return MaxBinaryExprId <= AST->GetId() && AST->GetId() <= MaxBinaryExprId;
   }
 
 protected:
@@ -443,7 +455,12 @@ protected:
     : ExpressionAST(Identifier, LeftOperand, Operator, RightOperand) { }
 };
 
-// TODO: comment.
+// While the operations available for all binary expressions are more or less
+// the same, it is still useful representing each of them by means of a separate
+// class. This will allow a visitor to match only the kind of expressions it is
+// interested on.
+//
+// This macro allows to declare a class for a generic binary operator.
 #define BINARY_EXPR_AST(I)                                              \
 class I ## ExprAST : public BinaryExprAST {                             \
 public:                                                                 \
@@ -641,7 +658,30 @@ public:
 // Non-terminal rule ASTs.
 //
 
-// TODO: comment about absence of 1:1 mapping with grammar rules.
+// Expressions parsing is one of the most critical section of a compiler
+// frontend. Indeed, parsing must be extremely fast -- most of the parsed code
+// will be expressions -- and we need to provide a good interface for AST
+// navigation. This two requirements do not allow to keep the ACSE invariant to
+// have 1 AST class for each grammar rule.
+//
+// Due to the optimization constraints, the section of the grammar related to
+// binary operators is ambiguous by design. Ambiguity is solved by the parsing
+// algorithm which uses operator precedences to figure out which rule to expand
+// or reduce. This lead to using only the 'expression' non-terminal in the
+// binary operator grammar.
+//
+// On the other hand, having only the ExpressionAST class in the AST is a poor
+// design choice because we cannot easily detect the type of an expression.
+//
+// In order to provide a consistent usable interface, the 1:1 rule to AST class
+// invariant is broken here. The static type of every expression handled by the
+// parser will be ExpressionAST, while their dynamic type will reflect the real
+// expression type.
+//
+// Please notice that a similar problem arises with primary expressions. They
+// are expressions, hence the parser handle ExpressionAST, but in order to
+// disambiguate between different primary expressions at AST navigation time,
+// each primary expression is represented with a different AST class.
 
 class NestedExprAST : public ExpressionAST {
 public:
