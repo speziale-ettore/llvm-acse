@@ -848,11 +848,20 @@ public:
     : AbstractSyntaxTreeNode(ReadStatement, Read, LPar, Id, RPar) { }
 };
 
+// write_statement
+//   : *Write* *LPar* expression *RPar*
 class WriteStatementAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == WriteStatement;
   }
+
+public:
+  WriteStatementAST(WriteAST *Write,
+                    LParAST *LPar,
+                    ExpressionAST *Expr,
+                    RParAST *RPar)
+    : AbstractSyntaxTreeNode(WriteStatement, Write, LPar, Expr, RPar) { }
 };
 
 // read_write_statement

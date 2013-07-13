@@ -784,7 +784,7 @@ ReadStatementAST *Parser::ParseReadStatement() {
   llvm::OwningPtr<IdentifierAST> Id;
   llvm::OwningPtr<RParAST> RPar;
 
-  // Firs token must be the keyword.
+  // First token must be the keyword.
   if(!llvm::dyn_cast_or_null<ReadTok>(Lex.Peek(0)))
     return 0;
 
@@ -817,8 +817,46 @@ ReadStatementAST *Parser::ParseReadStatement() {
   return new ReadStatementAST(Read.take(), LPar.take(), Id.take(), RPar.take());
 }
 
+// write_statement
+//   : *Write* *LPar* expression *RPar*
 WriteStatementAST *Parser::ParseWriteStatement() {
-  return 0;
+  llvm::OwningPtr<WriteAST> Write;
+  llvm::OwningPtr<LParAST> LPar;
+  llvm::OwningPtr<ExpressionAST> Expr;
+  llvm::OwningPtr<RParAST> RPar;
+
+  // First token must be the keyword.
+  if(!llvm::dyn_cast_or_null<WriteTok>(Lex.Peek(0)))
+    return 0;
+
+  Write.reset(new WriteAST(Lex.TakeAs<WriteTok>()));
+
+  // Second must be the opening paren.
+  if(!llvm::dyn_cast_or_null<LParTok>(Lex.Peek(0))) {
+    ReportError(ExpectedLPar, Lex.GetCurrentLoc());
+    return 0;
+  }
+
+  LPar.reset(new LParAST(Lex.TakeAs<LParTok>()));
+
+  // Now, try to parse an expression.
+  Expr.reset(ParseExpression());
+
+  if(!Expr)
+    return 0;
+
+  // At last, the closing paren.
+  if(!llvm::dyn_cast_or_null<RParTok>(Lex.Peek(0))) {
+    ReportError(ExpectedRPar, Lex.GetCurrentLoc());
+    return 0;
+  }
+
+  RPar.reset(new RParAST(Lex.TakeAs<RParTok>()));
+
+  return new WriteStatementAST(Write.take(),
+                               LPar.take(),
+                               Expr.take(),
+                               RPar.take());
 }
 
 // expression
