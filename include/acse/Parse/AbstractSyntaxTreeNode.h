@@ -832,11 +832,44 @@ public:
     : AbstractSyntaxTreeNode(AssignStatement, Assign) { }
 };
 
+// read_statement
+//   : *Read* *LPar* *Identifier* *RPar*
+class ReadStatementAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == ReadStatement;
+  }
+
+public:
+  ReadStatementAST(ReadAST *Read,
+                   LParAST *LPar,
+                   IdentifierAST *Id,
+                   RParAST *RPar)
+    : AbstractSyntaxTreeNode(ReadStatement, Read, LPar, Id, RPar) { }
+};
+
+class WriteStatementAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == WriteStatement;
+  }
+};
+
+// read_write_statement
+//   : read_statement
+//   | write_statement
 class ReadWriteStatementAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == ReadWriteStatement;
   }
+
+public:
+  ReadWriteStatementAST(ReadStatementAST *Read)
+    : AbstractSyntaxTreeNode( ReadWriteStatement, Read ) { }
+
+  ReadWriteStatementAST(WriteStatementAST *Write)
+    : AbstractSyntaxTreeNode( ReadWriteStatement, Write ) { }
 };
 
 // null_statement

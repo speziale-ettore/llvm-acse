@@ -324,6 +324,9 @@ private:
   ScalarAssignmentAST *ParseScalarAssignment();
   ArrayAssignmentAST *ParseArrayAssignment();
 
+  ReadStatementAST *ParseReadStatement();
+  WriteStatementAST *ParseWriteStatement();
+
   ExpressionAST *ParseExpression();
   ExpressionAST *ParsePrimaryExpression();
 

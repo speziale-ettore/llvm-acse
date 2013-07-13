@@ -656,8 +656,21 @@ AssignStatementAST *Parser::ParseAssignStatement() {
   return 0;
 }
 
+// read_write_statement
+//   : read_statement
+//   | write_statement
 ReadWriteStatementAST *Parser::ParseReadWriteStatement() {
-  return 0;
+  ReadWriteStatementAST *Stmt = 0;
+
+  // Try first with a 'read_statement' ...
+  if(ReadStatementAST *Read = ParseReadStatement())
+    Stmt = new ReadWriteStatementAST(Read);
+
+  // ... and then with a 'write_statement'.
+  else if(WriteStatementAST *Write = ParseWriteStatement())
+    Stmt = new ReadWriteStatementAST(Write);
+
+  return Stmt;
 }
 
 // null_statement
@@ -761,6 +774,51 @@ ArrayAssignmentAST *Parser::ParseArrayAssignment() {
                                   Assign.take(),
                                   RHS);
   return Stmt;
+}
+
+// read_statement
+//   : *Read* *LPar* *Identifier* *RPar*
+ReadStatementAST *Parser::ParseReadStatement() {
+  llvm::OwningPtr<ReadAST> Read;
+  llvm::OwningPtr<LParAST> LPar;
+  llvm::OwningPtr<IdentifierAST> Id;
+  llvm::OwningPtr<RParAST> RPar;
+
+  // Firs token must be the keyword.
+  if(!llvm::dyn_cast_or_null<ReadTok>(Lex.Peek(0)))
+    return 0;
+
+  Read.reset(new ReadAST(Lex.TakeAs<ReadTok>()));
+
+  // Second must be the opening paren.
+  if(!llvm::dyn_cast_or_null<LParTok>(Lex.Peek(0))) {
+    ReportError(ExpectedLPar, Lex.GetCurrentLoc());
+    return 0;
+  }
+
+  LPar.reset(new LParAST(Lex.TakeAs<LParTok>()));
+
+  // Between parens, there must be the identifier to store the read value to.
+  if(!llvm::dyn_cast_or_null<IdentifierTok>(Lex.Peek(0))) {
+    ReportError(ExpectedIdentifier, Lex.GetCurrentLoc());
+    return 0;
+  }
+
+  Id.reset(new IdentifierAST(Lex.TakeAs<IdentifierTok>()));
+
+  // And at last, the closing paren.
+  if(!llvm::dyn_cast_or_null<RParTok>(Lex.Peek(0))) {
+    ReportError(ExpectedRPar, Lex.GetCurrentLoc());
+    return 0;
+  }
+
+  RPar.reset(new RParAST(Lex.TakeAs<RParTok>()));
+
+  return new ReadStatementAST(Read.take(), LPar.take(), Id.take(), RPar.take());
+}
+
+WriteStatementAST *Parser::ParseWriteStatement() {
+  return 0;
 }
 
 // expression

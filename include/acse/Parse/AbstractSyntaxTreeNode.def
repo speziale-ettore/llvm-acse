@@ -52,6 +52,10 @@ AST(ControlStatement)
 AST(ScalarAssignment)
 AST(ArrayAssignment)
 
+// Non-terminal rule ASTs: I/O.
+AST(ReadStatement)
+AST(WriteStatement)
+
 // Non-terminal rule ASTs: algebraic expressions.
 AST(AddExpr) // '+'
 AST(SubExpr) // '-'
