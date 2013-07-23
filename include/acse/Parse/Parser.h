@@ -7,11 +7,12 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef ACSE_LEX_PARSER_H
-#define ACSE_LEX_PARSER_H
+#ifndef ACSE_PARSE_PARSER_H
+#define ACSE_PARSE_PARSER_H
 
 #include "acse/Lex/Lexer.h"
 #include "acse/Parse/AbstractSyntaxTree.h"
+#include "acse/Parse/ParsingStack.h"
 
 #include "llvm/ADT/IntrusiveRefCntPtr.h"
 
@@ -551,4 +552,4 @@ ListTy *Parser::ParseList() {
 
 } // End namespace acse.
 
-#endif // ACSE_LEX_PARSER_H
+#endif // ACSE_PARSE_PARSER_H

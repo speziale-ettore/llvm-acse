@@ -11,112 +11,58 @@
 
 using namespace acse;
 
-// For efficient parsing we need to define some specialized data structures. Do
-// that here, in an anonymous namespace since they are used only on this file.
-namespace {
+namespace acse {
 
-// Parsing algorithms are usually recursive, however when it comes the time of
-// implementing them it is needed to switch to an iterative version in order to
-// achieve good performance.
-//
-// This class simulate a function call frame, so the parse can simulate
-// recursive calls without using the implicit stack frame.
-template <typename Ty, typename Tp>
-class ParsingFrame {
-public:
-  ParsingFrame(const Ty &First, const Tp &Second) : First(First),
-                                                    Second(Second) { }
+// Specialize FramePrintTraits for frames used in expression parsing.
+template <>
+struct FramePrintTraits<ParsingFrame<Token *, ExpressionAST *> > {
+  static
+  unsigned GetWidth(const ParsingFrame<Token *, ExpressionAST *> &Frame) {
+    std::string TokLine, ExprLine;
+    llvm::raw_string_ostream TS(TokLine), ES(ExprLine);
 
-  ParsingFrame(const ParsingFrame &That) : First(That.First),
-                                           Second(That.Second) { }
+    Token *Tok = Frame.GetFirst();
+    ExpressionAST *Expr = Frame.GetSecond();
 
-  const ParsingFrame &operator=(const ParsingFrame &That) {
-    if(this != &That) {
-      First = That.First;
-      Second = That.Second;
+    if(Tok) {
+      TS << Tok->GetId();
+      TS.flush();
     }
 
-    return *this;
+    if(Expr) {
+      ES << Expr->GetId();
+      ES.flush();
+    }
+
+    return std::max(TokLine.size(), ExprLine.size());
   }
 
-public:
-  Ty &GetFirst() { return First; }
-  Tp &GetSecond() { return Second; }
+  static
+  std::string GetText(const ParsingFrame<Token *, ExpressionAST *> &Frame) {
+    std::string TokLine, ExprLine, Text;
+    llvm::raw_string_ostream OS(Text);
 
-  const Ty &GetFirst() const { return First; }
-  const Tp &GetSecond() const { return Second; }
+    Token *Tok = Frame.GetFirst();
+    ExpressionAST *Expr = Frame.GetSecond();
 
-  void SetFirst(const Ty &Elt) { First = Elt; }
-  void SetSecond(const Tp &Elt) { Second = Elt; }
+    // Since the stack is printed with the top frame in the first line, it is
+    // better emitting frame text in the reverse order. In that way, the
+    // expression right operand is followed by the operator, which is then
+    // followed by the expression left operand -- stored in the previous frame.
+    if(Expr) {
+      OS << Expr->GetId() << "\n";
+    }
+    if(Tok) {
+      OS << Tok->GetId() << "\n";
+    }
 
-private:
-  Ty First;
-  Tp Second;
-};
-
-// Utility function to create an instance of a parsing frame by deriving its
-// generic arguments from the static type of the function arguments.
-template <typename Ty, typename Tp>
-ParsingFrame<Ty, Tp> MakeParsingFrame(const Ty &First, const Tp &Second) {
-  return ParsingFrame<Ty, Tp>(First, Second);
-}
-
-// A parsing stack allows to simulate recursive calls, often found in parsing
-// algorithms. Moreover, it provides some utility member functions to inspect
-// its status. It also keep care of freeing memory when an error is encountered
-// during parsing -- see destructor.
-template <typename Ty, size_t InternalStorage>
-class ParsingStack {
-private:
-  typedef llvm::SmallVector<Ty, InternalStorage> Storage;
-
-public:
-  typedef typename Storage::iterator iterator;
-  typedef typename Storage::const_iterator const_iterator;
-
-  typedef typename Storage::reverse_iterator reverse_iterator;
-  typedef typename Storage::const_reverse_iterator const_reverse_iterator;
-
-public:
-  iterator begin() { return Stack.begin(); }
-  iterator end() { return Stack.end(); }
-
-  const_iterator begin() const { return Stack.begin(); }
-  const_iterator end() const { return Stack.end(); }
-
-  reverse_iterator rbegin() { return Stack.rbegin(); }
-  reverse_iterator rend() { return Stack.rend(); }
-
-  const_reverse_iterator rbegin() const { return Stack.rbegin(); }
-  const_reverse_iterator rend() const { return  Stack.rend(); }
-
-public:
-  ParsingStack() { }
-
-private:
-  ParsingStack(const ParsingStack &That) LLVM_DELETED_FUNCTION;
-  const ParsingStack &operator=(const ParsingStack &That) LLVM_DELETED_FUNCTION;
-
-public:
-  // TODO: implement + comment.
-  ~ParsingStack() { }
-
-public:
-  void push(const Ty &Frame) { Stack.push_back(Frame); }
-  void pop() { Stack.pop_back(); }
-
-  size_t size() const { return Stack.size(); }
-
-public:
-  // TODO: introduce and define TableTraits to print the stack?
-  void Dump(llvm::raw_ostream &OS = llvm::errs()) const {
-    for(const_reverse_iterator I = rbegin(), E = rend(); I != E; ++I)
-      OS << "<" << I->GetFirst() << "," << I->GetSecond() << ">" << "\n";
+    return OS.str();
   }
-
-private:
-  Storage Stack;
 };
+
+} // End acse namespace.
+
+namespace {
 
 // Utility function to create a TokenAST representing an operator for a given
 // Token.
@@ -916,6 +862,7 @@ ExpressionAST *Parser::ParseExpression() {
       CurTok = Lex.Peek(0);
     }
 
+Stack.Dump();
     // The other case is when the precedence of the current token do not exceed
     // the one of the token at the top of the stack. That means that the
     // operand on the top of the stack is linked to the former operator.
