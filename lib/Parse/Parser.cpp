@@ -11,69 +11,6 @@
 
 using namespace acse;
 
-namespace acse {
-
-// Specialize FrameTraits for framers used in expressions parsing.
-template <>
-struct FrameTraits<ParsingFrame<Token *, ExpressionAST *> > {
-  static void Dispose(ParsingFrame<Token *, ExpressionAST *> &Frame) {
-    if(Token *Tok = Frame.GetFirst())
-      delete Tok;
-
-    if(ExpressionAST *Expr = Frame.GetSecond())
-      delete Expr;
-  }
-};
-
-// Specialize FramePrintTraits for frames used in expressions parsing.
-template <>
-struct FramePrintTraits<ParsingFrame<Token *, ExpressionAST *> > {
-  static
-  unsigned GetWidth(const ParsingFrame<Token *, ExpressionAST *> &Frame) {
-    std::string TokLine, ExprLine;
-    llvm::raw_string_ostream TS(TokLine), ES(ExprLine);
-
-    Token *Tok = Frame.GetFirst();
-    ExpressionAST *Expr = Frame.GetSecond();
-
-    if(Tok) {
-      TS << Tok->GetId();
-      TS.flush();
-    }
-
-    if(Expr) {
-      ES << Expr->GetId();
-      ES.flush();
-    }
-
-    return std::max(TokLine.size(), ExprLine.size());
-  }
-
-  static
-  std::string GetText(const ParsingFrame<Token *, ExpressionAST *> &Frame) {
-    std::string TokLine, ExprLine, Text;
-    llvm::raw_string_ostream OS(Text);
-
-    Token *Tok = Frame.GetFirst();
-    ExpressionAST *Expr = Frame.GetSecond();
-
-    // Since the stack is printed with the top frame in the first line, it is
-    // better emitting frame text in the reverse order. In that way, the
-    // expression right operand is followed by the operator, which is then
-    // followed by the expression left operand -- stored in the previous frame.
-    if(Expr) {
-      OS << Expr->GetId() << "\n";
-    }
-    if(Tok) {
-      OS << Tok->GetId() << "\n";
-    }
-
-    return OS.str();
-  }
-};
-
-} // End acse namespace.
-
 namespace {
 
 // Utility function to create a TokenAST representing an operator for a given
@@ -1040,13 +977,51 @@ void Parser::ReportError(ErrorTy Error, llvm::SMLoc Loc) {
 // list, the ListParseTraits template must be specialized in order to tell to
 // the generic list parsing function ParseList which parser to use for parsing a
 // list element.
+//
+// For each AST, we have to also specialize FrameTraits and FramePrintTraits in
+// order to use ParsingStack and get nice stack dump traces. The same traits
+// must be specialized also for the data structures involved in expression
+// parsing.
 namespace acse {
 
-#define LIST_TRAITS(L, N, S)                                        \
-template <>                                                         \
-struct ListParseTraits<L ## AST, N ## AST, S>                       \
-  : public DefaultListParseTraits<L ## AST, N ## AST, S> {          \
-  static NodeParser GetNodeParser() { return &Parser::Parse ## N; } \
+#define LIST_TRAITS(L, N, S)                                          \
+template <>                                                           \
+struct ListParseTraits<L ## AST, N ## AST, S>                         \
+  : public DefaultListParseTraits<L ## AST, N ## AST, S> {            \
+  static NodeParser GetNodeParser() { return &Parser::Parse ## N; }   \
+};                                                                    \
+                                                                      \
+template <>                                                           \
+struct FrameTraits<ParsingFrame<N ## AST *> > {                       \
+  static void Dispose(ParsingFrame<N ## AST *> &Frame) {              \
+    if(N ## AST *Node = Frame)                                        \
+      delete Node;                                                    \
+  }                                                                   \
+};                                                                    \
+                                                                      \
+template <>                                                           \
+struct FramePrintTraits<ParsingFrame<N ## AST *> > {                  \
+  static unsigned GetWidth(const ParsingFrame<N ## AST *> &Frame) {   \
+    std::string OnlyLine;                                             \
+    llvm::raw_string_ostream OS(OnlyLine);                            \
+                                                                      \
+    if(N ## AST *Node = Frame) {                                      \
+      OS << Node->GetId();                                            \
+      OS.flush();                                                     \
+    }                                                                 \
+                                                                      \
+    return OnlyLine.size();                                           \
+  }                                                                   \
+                                                                      \
+  static std::string GetText(const ParsingFrame<N ## AST *> &Frame) { \
+    std::string OnlyLine;                                             \
+    llvm::raw_string_ostream OS(OnlyLine);                            \
+                                                                      \
+    if(N ## AST *Node = Frame)                                        \
+      OS << Node->GetId();                                            \
+                                                                      \
+    return OS.str();                                                  \
+  }                                                                   \
 };
 
 LIST_TRAITS(NonEmptyVarDeclarations, VarDeclaration, ListParseNoSepTag)
@@ -1054,16 +1029,125 @@ LIST_TRAITS(NonEmptyStatements, Statement, ListParseNoSepTag)
 
 #undef LIST_TRAITS
 
-#define LIST_TRAITS(L, N, S) \
-template <>                                                         \
-struct ListParseTraits<L ## AST, N ## AST, S ## AST>                \
-  : public DefaultListParseTraits<L ## AST, N ## AST, S ## AST> {   \
-  static NodeParser GetNodeParser() { return &Parser::Parse ## N; } \
+#define LIST_TRAITS(L, N, S)                                               \
+template <>                                                                \
+struct ListParseTraits<L ## AST, N ## AST, S ## AST>                       \
+  : public DefaultListParseTraits<L ## AST, N ## AST, S ## AST> {          \
+  static NodeParser GetNodeParser() { return &Parser::Parse ## N; }        \
+};                                                                         \
+                                                                           \
+template <>                                                                \
+struct FrameTraits<ParsingFrame<N ## AST *, S ## AST *> > {                \
+  static void Dispose(ParsingFrame<N ## AST *, S ## AST *> &Frame ) {      \
+    if(N ## AST *Node = Frame.GetFirst())                                  \
+      delete Node;                                                         \
+                                                                           \
+    if(S ## AST *Sep = Frame.GetSecond())                                  \
+      delete Sep;                                                          \
+  }                                                                        \
+};                                                                         \
+                                                                           \
+template <>                                                                \
+struct FramePrintTraits<ParsingFrame<N ## AST *, S ## AST *> > {           \
+  static                                                                   \
+  unsigned GetWidth(const ParsingFrame<N ## AST *, S ## AST *> &Frame) {   \
+    std::string NodeLine, SepLine;                                         \
+    llvm::raw_string_ostream NS(NodeLine), SS(SepLine);                    \
+                                                                           \
+    N ## AST *Node = Frame.GetFirst();                                     \
+    S ## AST *Sep = Frame.GetSecond();                                     \
+                                                                           \
+    if(Node) {                                                             \
+      NS << Node->GetId();                                                 \
+      NS.flush();                                                          \
+    }                                                                      \
+                                                                           \
+    if(Sep) {                                                              \
+      SS << Sep->GetId();                                                  \
+      SS.flush();                                                          \
+    }                                                                      \
+                                                                           \
+    return std::max(NodeLine.size(), SepLine.size());                      \
+  }                                                                        \
+                                                                           \
+  static                                                                   \
+  std::string GetText(const ParsingFrame<N ## AST *, S ## AST *> &Frame) { \
+    std::string NodeLine, SepLine, Text;                                   \
+    llvm::raw_string_ostream OS(Text);                                     \
+                                                                           \
+    N ## AST *Node = Frame.GetFirst();                                     \
+    S ## AST *Sep = Frame.GetSecond();                                     \
+                                                                           \
+    if(Sep)                                                                \
+      OS << Sep->GetId() << "\n";                                          \
+                                                                           \
+    if(Node)                                                               \
+      OS << Node->GetId() << "\n";                                         \
+                                                                           \
+    return OS.str();                                                       \
+  }                                                                        \
 };
 
 LIST_TRAITS(DeclarationList, Declaration, Comma)
 LIST_TRAITS(InitializerList, Initializer, Comma)
 
 #undef LIST_TRAITS
+
+template <>
+struct FrameTraits<ParsingFrame<Token *, ExpressionAST *> > {
+  static void Dispose(ParsingFrame<Token *, ExpressionAST *> &Frame) {
+    if(Token *Tok = Frame.GetFirst())
+      delete Tok;
+
+    if(ExpressionAST *Expr = Frame.GetSecond())
+      delete Expr;
+  }
+};
+
+template <>
+struct FramePrintTraits<ParsingFrame<Token *, ExpressionAST *> > {
+  static
+  unsigned GetWidth(const ParsingFrame<Token *, ExpressionAST *> &Frame) {
+    std::string TokLine, ExprLine;
+    llvm::raw_string_ostream TS(TokLine), ES(ExprLine);
+
+    Token *Tok = Frame.GetFirst();
+    ExpressionAST *Expr = Frame.GetSecond();
+
+    if(Tok) {
+      TS << Tok->GetId();
+      TS.flush();
+    }
+
+    if(Expr) {
+      ES << Expr->GetId();
+      ES.flush();
+    }
+
+    return std::max(TokLine.size(), ExprLine.size());
+  }
+
+  static
+  std::string GetText(const ParsingFrame<Token *, ExpressionAST *> &Frame) {
+    std::string TokLine, ExprLine, Text;
+    llvm::raw_string_ostream OS(Text);
+
+    Token *Tok = Frame.GetFirst();
+    ExpressionAST *Expr = Frame.GetSecond();
+
+    // Since the stack is printed with the top frame in the first line, it is
+    // better emitting frame text in the reverse order. In that way, the
+    // expression right operand is followed by the operator, which is then
+    // followed by the expression left operand -- stored in the previous frame.
+    if(Expr) {
+      OS << Expr->GetId() << "\n";
+    }
+    if(Tok) {
+      OS << Tok->GetId() << "\n";
+    }
+
+    return OS.str();
+  }
+};
 
 } // End namespace acse.

@@ -15,12 +15,18 @@
 
 namespace acse {
 
+// Tag structure used to identify that a frame generic argument is not used.
+struct ParsingFrameUnused { };
+
 // Parsing algorithms are usually recursive, however when it comes the time of
 // implementing them it is needed to switch to an iterative version in order to
 // achieve good performance.
 //
 // The following templates defines different function call frames, so parsers
 // can simulate recursive calls without using the implicit stack frame.
+
+template<typename Ty, typename Tp = ParsingFrameUnused>
+class ParsingFrame;
 
 template <typename Ty, typename Tp>
 class ParsingFrame {
@@ -55,6 +61,28 @@ private:
   Tp Second;
 };
 
+template <typename Ty>
+class ParsingFrame<Ty, ParsingFrameUnused> {
+public:
+  ParsingFrame(const Ty &Only) : Only(Only) { }
+
+  ParsingFrame(const ParsingFrame &That): Only(That.Only) { }
+
+  const ParsingFrame &operator=(const ParsingFrame &That) {
+    if(this != That)
+      Only = That.Only;
+
+    return *this;
+  }
+
+public:
+  operator Ty &() { return Only; }
+  operator const Ty &() const { return Only; }
+
+private:
+  Ty Only;
+};
+
 // To ease the process of instancing parsing frames, a family of utility
 // functions is defined. The generic argument types of the parsing frame are
 // inferred by the compiler starting from the static type of the function
@@ -63,6 +91,11 @@ private:
 template <typename Ty, typename Tp>
 ParsingFrame<Ty, Tp> MakeParsingFrame(const Ty &First, const Tp &Second) {
   return ParsingFrame<Ty, Tp>(First, Second);
+}
+
+template <typename Ty>
+ParsingFrame<Ty> MakeParsingFrame(const Ty &Only) {
+  return ParsingFrame<Ty>(Only);
 }
 
 // Defines default implementation for frame traits.
@@ -132,6 +165,12 @@ public:
   }
 
 public:
+  Ty &top() { return Stack.back(); }
+  Ty &bot() { return Stack.front(); }
+
+  const Ty &top() const { return Stack.back(); }
+  const Ty &bot() const { return Stack.front(); }
+
   void push(const Ty &Frame) { Stack.push_back(Frame); }
   void pop() { Stack.pop_back(); }
 

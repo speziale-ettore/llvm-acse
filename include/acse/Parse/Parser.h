@@ -473,8 +473,9 @@ template <typename ListTy, typename NodeTy>
 inline
 ListTy *Parser::ParseList() {
   typedef ListParseTraits<ListTy, NodeTy, ListParseNoSepTag> ParseTraits;
+  typedef ParsingFrame<NodeTy *> ListNode;
 
-  llvm::SmallVector<NodeTy *, 4> Stack;
+  ParsingStack<ListNode, 8> Stack;
 
   // Optimization notice: the parser is obtained via a function pointer,
   // however, the compiler is smart enough to inline all the calls to the trait
@@ -484,15 +485,15 @@ ListTy *Parser::ParseList() {
 
   // Iterative version of recursive descendent calls.
   while(NodeTy *Node = (this->*NodeParser)())
-    Stack.push_back(Node);
+    Stack.push(MakeParsingFrame(Node));
 
   ListTy *List = 0;
 
   // We reach the innermost parser. Simulate returning from recursive calls
   // by popping elements from the stack and build the tree.
   while(!Stack.empty()) {
-    List = ParseTraits::CreateListAST(Stack.back(), List);
-    Stack.pop_back();
+    List = ParseTraits::CreateListAST(Stack.top(), List);
+    Stack.pop();
   }
 
   return List;
@@ -503,8 +504,9 @@ inline
 ListTy *Parser::ParseList() {
   typedef ListParseTraits<ListTy, NodeTy, SepTy> ParseTraits;
   typedef typename SepTy::Token SepToken;
+  typedef ParsingFrame<NodeTy *, SepTy *> IncompleteList;
 
-  llvm::SmallVector<std::pair<NodeTy *, SepTy *>, 4> Stack;
+  ParsingStack<IncompleteList, 8> Stack;
   NodeTy *Node;
 
   // Optimization notice: the parser is obtained via a function pointer,
@@ -515,7 +517,7 @@ ListTy *Parser::ParseList() {
 
   // We should parse at least one element.
   if((Node = (this->*NodeParser)()))
-    Stack.push_back(std::make_pair(Node, static_cast<SepTy *>(0)));
+    Stack.push(MakeParsingFrame(Node, static_cast<SepTy *>(0)));
 
   // While a list element has been parser, try to parse the next one.
   while(Node) {
@@ -529,10 +531,10 @@ ListTy *Parser::ParseList() {
 
     // We parsed a separator, so there must be an element.
     if((Node = (this->*NodeParser)())) {
-      std::pair<NodeTy *, SepTy *> &Prev = Stack.back();
-      Prev.second = Sep.take();
+      IncompleteList &Prev = Stack.top();
+      Prev.SetSecond(Sep.take());
 
-      Stack.push_back(std::make_pair(Node, static_cast<SepTy *>(0)));
+      Stack.push(MakeParsingFrame(Node, static_cast<SepTy *>(0)));
     }
   }
 
@@ -541,10 +543,10 @@ ListTy *Parser::ParseList() {
   // We reached the innermost parser. Simulate returning from recursive calls by
   // popping elements from the stack and build the tree bottom-up.
   while(!Stack.empty()) {
-    std::pair<NodeTy *, SepTy *> &Cur = Stack.back();
-    List = ParseTraits::CreateListAST(Cur.first, Cur.second, List);
+    IncompleteList &Cur = Stack.top();
+    List = ParseTraits::CreateListAST(Cur.GetFirst(), Cur.GetSecond(), List);
 
-    Stack.pop_back();
+    Stack.pop();
   }
 
   return List;
