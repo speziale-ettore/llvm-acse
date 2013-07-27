@@ -13,7 +13,19 @@ using namespace acse;
 
 namespace acse {
 
-// Specialize FramePrintTraits for frames used in expression parsing.
+// Specialize FrameTraits for framers used in expressions parsing.
+template <>
+struct FrameTraits<ParsingFrame<Token *, ExpressionAST *> > {
+  static void Dispose(ParsingFrame<Token *, ExpressionAST *> &Frame) {
+    if(Token *Tok = Frame.GetFirst())
+      delete Tok;
+
+    if(ExpressionAST *Expr = Frame.GetSecond())
+      delete Expr;
+  }
+};
+
+// Specialize FramePrintTraits for frames used in expressions parsing.
 template <>
 struct FramePrintTraits<ParsingFrame<Token *, ExpressionAST *> > {
   static

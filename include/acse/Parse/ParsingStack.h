@@ -65,6 +65,23 @@ ParsingFrame<Ty, Tp> MakeParsingFrame(const Ty &First, const Tp &Second) {
   return ParsingFrame<Ty, Tp>(First, Second);
 }
 
+// Defines default implementation for frame traits.
+template <typename Ty>
+struct DefaultFrameTraits {
+  static void Dispose(Ty &Frame) { }
+};
+
+// Frame traits are requested by the parsing stack in order to manage frames.
+// The following static member functions must be defined by trait
+// specializations:
+//
+// - static void Dispose(Ty &Frame): release resources held by the frame
+//
+// The DefaultFrameTraits class defines a set of reasonable default
+// implementations for these functions.
+template <typename Ty>
+struct FrameTraits : public DefaultFrameTraits<Ty> { };
+
 // A parsing stack allows to simulate recursive calls, often found in parsing
 // algorithms. Moreover, it provides some utility member functions to inspect
 // its status. It also keep care of freeing memory when an error is encountered
@@ -103,7 +120,10 @@ private:
 
 public:
   // TODO: implement + comment.
-  ~ParsingStack() { }
+  ~ParsingStack() {
+    for(iterator I = begin(), E = end(); I != E; ++I)
+      FrameTraits<Ty>::Dispose(*I);
+  }
 
 public:
   void push(const Ty &Frame) { Stack.push_back(Frame); }
