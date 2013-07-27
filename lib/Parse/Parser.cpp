@@ -862,7 +862,6 @@ ExpressionAST *Parser::ParseExpression() {
       CurTok = Lex.Peek(0);
     }
 
-Stack.Dump();
     // The other case is when the precedence of the current token do not exceed
     // the one of the token at the top of the stack. That means that the
     // operand on the top of the stack is linked to the former operator.
