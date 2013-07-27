@@ -119,7 +119,13 @@ private:
   const ParsingStack &operator=(const ParsingStack &That) LLVM_DELETED_FUNCTION;
 
 public:
-  // TODO: implement + comment.
+  // Normally, if a token stream has been parsed correctly, there are no frames
+  // left on the stack. However, on errors it can happen that there are still
+  // some frames stacked when the parsing stack is destroyed.
+  //
+  // The destructor keep care of disposing not yet unstacked frames. If a
+  // particular frame implementation allocates memory on the heap, it can
+  // specialize frame traits, and have memory freed here.
   ~ParsingStack() {
     for(iterator I = begin(), E = end(); I != E; ++I)
       FrameTraits<Ty>::Dispose(*I);
