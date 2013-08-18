@@ -245,6 +245,9 @@ struct DefaultFramePrintTraits {
 //   be rendered. The returned text can contains newlines
 //
 // Derive from DefaultFramePrintTraits to access to pre-defined defaults.
+//
+// TODO: remove the GetWidth static member and let the rendered compute the
+// width of the frame.
 template <typename Ty>
 struct FramePrintTraits : public DefaultFramePrintTraits<Ty> { };
 
