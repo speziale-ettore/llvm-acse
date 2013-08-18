@@ -139,7 +139,7 @@ public:
       return iterator(Cur - N, Base);
     }
 
-    value_type & operator[](difference_type N) const {
+    value_type &operator[](difference_type N) const {
       return Base.getPath(Cur + N);
     }
 

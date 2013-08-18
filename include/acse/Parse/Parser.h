@@ -10,6 +10,7 @@
 #ifndef ACSE_PARSE_PARSER_H
 #define ACSE_PARSE_PARSER_H
 
+#include "acse/ADT/TableTraits.h"
 #include "acse/Lex/Lexer.h"
 #include "acse/Parse/AbstractSyntaxTree.h"
 #include "acse/Parse/ParsingStack.h"
@@ -51,7 +52,7 @@ struct ListParseNoSepTag { };
 // actual maximum precedence value is 10 -- remember that precedence 0
 // identifies unused tokens.
 class PrecedenceTable {
-private:
+public:
   class Table : public llvm::RefCountedBase<Table> {
   public:
     static const unsigned InvalidPrecedence = 0;
@@ -70,6 +71,13 @@ private:
   private:
     static Table *Instance;
 
+  public:
+    typedef const uint8_t *iterator;
+
+  public:
+    iterator begin() const { return Data; }
+    iterator end() const { return Data + Token::Count; }
+
   private:
     Table() { Fill(); }
 
@@ -77,7 +85,7 @@ private:
     ~Table() { Instance = 0; }
 
   public:
-    unsigned operator[](Token::Id id) const { return Data[id]; }
+    uint8_t operator[](Token::Id id) const { return Data[id]; }
 
   public:
     void Dump(llvm::raw_ostream &OS = llvm::errs()) const;
@@ -100,7 +108,7 @@ public:
   PrecedenceTable() : Data(Table::Get()) { }
 
 public:
-  unsigned operator[](Token::Id Id) const { return (*Data)[Id]; }
+  uint8_t operator[](Token::Id Id) const { return (*Data)[Id]; }
 
 public:
   void Dump(llvm::raw_ostream &OS = llvm::errs()) const;
@@ -200,6 +208,27 @@ public:
 
 private:
   llvm::IntrusiveRefCntPtr<Table> Data;
+};
+
+// Specialize TableTraits in order to use the PrecedenceTable::Table with
+// generic table algorithms.
+template <>
+struct TableTraits<PrecedenceTable::Table> {
+  typedef PrecedenceTable::Table::iterator const_iterator;
+
+  static const_iterator begin(const PrecedenceTable::Table &Table) {
+    return Table.begin();
+  }
+
+  static const_iterator end(const PrecedenceTable::Table &Table) {
+    return Table.end();
+  }
+
+  typedef const uint8_t Row;
+
+  static unsigned GetColumns(const PrecedenceTable::Table &Table) {
+    return 1;
+  }
 };
 
 // This class allows to extract an abstract syntax tree -- AST -- from a

@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "acse/Parse/Parser.h"
+#include "acse/Support/TablePrinter.h"
 
 using namespace acse;
 
@@ -79,11 +80,8 @@ void PrecedenceTable::Table::Fill() {
   #undef SAME_PRECEDENCE
 }
 
-// TODO: introduce TableTraits, and use a generic algorithm to print out any
-// table in the compiler -- e.g. operator precedence table and symbol table.
 void PrecedenceTable::Table::Dump(llvm::raw_ostream &OS) const {
-  for(unsigned I = 0, E = Token::Count; I != E; ++I)
-    OS << Token::Id(I) << " -> " << unsigned(Data[I]) << "\n";
+  PrintTable(*this, OS);
 }
 
 void PrecedenceTable::Dump(llvm::raw_ostream &OS) const {
@@ -973,16 +971,87 @@ void Parser::ReportError(ErrorTy Error, llvm::SMLoc Loc) {
   ErrorsFound = true;
 }
 
-// Specialization of list parser templates. For each AST which is actually a
-// list, the ListParseTraits template must be specialized in order to tell to
-// the generic list parsing function ParseList which parser to use for parsing a
-// list element.
+// Specialization of various templates. First of all, TablePrintTraits is
+// specialized for PrecedenceTable in order to dump it to streams.
+//
+// List parser templates should also be specialized. For each AST which is
+// actually a list, the ListParseTraits template must be specialized in order to
+// tell to the generic list parsing function ParseList which parser to use for
+// parsing a list element.
 //
 // For each AST, we have to also specialize FrameTraits and FramePrintTraits in
 // order to use ParsingStack and get nice stack dump traces. The same traits
 // must be specialized also for the data structures involved in expression
 // parsing.
 namespace acse {
+
+template <>
+struct TablePrintTraits<PrecedenceTable::Table>
+  : public DefaultTablePrintTraits<PrecedenceTable::Table> {
+  static bool HasHeader(const PrecedenceTable::Table &Table) {
+    return true;
+  }
+
+  static bool HasRowNames(const PrecedenceTable::Table &Table) {
+    return true;
+  }
+
+  // TODO: remove and improve the table printer such as it computes the widths
+  // in a pre-rendering step.
+  static unsigned GetRowNameWidth(const PrecedenceTable::Table &Table) {
+    typedef PrecedenceTable::Table::iterator iterator;
+
+    unsigned Length = 5; // 5 == strlen("Token")
+
+    for(iterator I = Table.begin(), E = Table.end(); I != E; ++I) {
+      std::string RowName;
+      llvm::raw_string_ostream OS(RowName);
+
+      OS << static_cast<Token::Id>(I - Table.begin());
+      OS.flush();
+
+      Length = std::max(Length, static_cast<unsigned>(RowName.size()));
+    }
+
+    return Length;
+  }
+
+  static std::string GetRowNamesHeading(const PrecedenceTable::Table &Table) {
+    return "Token";
+  }
+
+  static std::string GetRowName(const PrecedenceTable::Table &Table,
+                                const uint8_t &Row) {
+    std::string RowName;
+    llvm::raw_string_ostream OS(RowName);
+
+    OS << static_cast<Token::Id>(&Row - Table.begin());
+
+    return OS.str();
+  }
+
+  // TODO: remove and improve the table printer such as it computes the widths
+  // in a pre-rendering step.
+  static std::vector<unsigned>
+  GetColumnWidths(const PrecedenceTable::Table &Table, const uint8_t &Row) {
+    return std::vector<unsigned>(1, 10); // 10 == std::strlen("Precedence")
+  }
+
+  static std::vector<std::string>
+  GetColumnHeadings(const PrecedenceTable::Table &Table) {
+    return std::vector<std::string>(1, "Precedence");
+  }
+
+  static std::vector<std::string>
+  GetRowTexts(const PrecedenceTable::Table &Table, const uint8_t &Row) {
+    std::string Precedence;
+    llvm::raw_string_ostream OS(Precedence);
+
+    OS << static_cast<unsigned>(Row);
+
+    return std::vector<std::string>(1, OS.str());
+  }
+};
 
 #define LIST_TRAITS(L, N, S)                                          \
 template <>                                                           \
@@ -1106,6 +1175,8 @@ struct FrameTraits<ParsingFrame<Token *, ExpressionAST *> > {
 
 template <>
 struct FramePrintTraits<ParsingFrame<Token *, ExpressionAST *> > {
+  // TODO: remove and improve the table printer such as it computes the widths
+  // in a pre-rendering step.
   static
   unsigned GetWidth(const ParsingFrame<Token *, ExpressionAST *> &Frame) {
     std::string TokLine, ExprLine;
@@ -1139,12 +1210,10 @@ struct FramePrintTraits<ParsingFrame<Token *, ExpressionAST *> > {
     // better emitting frame text in the reverse order. In that way, the
     // expression right operand is followed by the operator, which is then
     // followed by the expression left operand -- stored in the previous frame.
-    if(Expr) {
+    if(Expr)
       OS << Expr->GetId() << "\n";
-    }
-    if(Tok) {
+    if(Tok)
       OS << Tok->GetId() << "\n";
-    }
 
     return OS.str();
   }

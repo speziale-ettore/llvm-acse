@@ -27,9 +27,18 @@ public:
     #include "acse/Lex/Token.def"
     #undef TOKEN
 
-    // Special.
-    Invalid,
-    Count
+    // This enum value represents the number of tokens accepted by ACSE.
+    Count,
+
+    // This value is needed to identify an invalid token. An invalid token is
+    // not used by ACSE during parsing. It is only used when the default
+    // constructor of Token is called. In this case, we cannot give a token
+    // identifier, hence the built token is unknown.
+    //
+    // Default constructor is only needed because we are going to put Token
+    // instances inside a collection -- it requires the element type having a
+    // default constructor.
+    Invalid
   };
 
 public:
