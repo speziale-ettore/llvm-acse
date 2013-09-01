@@ -996,26 +996,6 @@ struct TablePrintTraits<PrecedenceTable::Table>
     return true;
   }
 
-  // TODO: remove and improve the table printer such as it computes the widths
-  // in a pre-rendering step.
-  static unsigned GetRowNameWidth(const PrecedenceTable::Table &Table) {
-    typedef PrecedenceTable::Table::iterator iterator;
-
-    unsigned Length = 5; // 5 == strlen("Token")
-
-    for(iterator I = Table.begin(), E = Table.end(); I != E; ++I) {
-      std::string RowName;
-      llvm::raw_string_ostream OS(RowName);
-
-      OS << static_cast<Token::Id>(I - Table.begin());
-      OS.flush();
-
-      Length = std::max(Length, static_cast<unsigned>(RowName.size()));
-    }
-
-    return Length;
-  }
-
   static std::string GetRowNamesHeading(const PrecedenceTable::Table &Table) {
     return "Token";
   }
@@ -1028,13 +1008,6 @@ struct TablePrintTraits<PrecedenceTable::Table>
     OS << static_cast<Token::Id>(&Row - Table.begin());
 
     return OS.str();
-  }
-
-  // TODO: remove and improve the table printer such as it computes the widths
-  // in a pre-rendering step.
-  static std::vector<unsigned>
-  GetColumnWidths(const PrecedenceTable::Table &Table, const uint8_t &Row) {
-    return std::vector<unsigned>(1, 10); // 10 == std::strlen("Precedence")
   }
 
   static std::vector<std::string>

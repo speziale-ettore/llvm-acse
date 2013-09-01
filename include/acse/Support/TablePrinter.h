@@ -18,7 +18,8 @@
 
 namespace acse {
 
-// TODO: comment.
+// Defines a reasonable set of defaults value for the TablePrintTratis. Extend
+// this class if you want to use them in a trait specialization.
 template <typename Ty>
 struct DefaultTablePrintTraits {
   static bool HasHeader(const Ty &Table) {
@@ -29,11 +30,6 @@ struct DefaultTablePrintTraits {
     return false;
   }
 
-  // TODO: remove from the trait, width must be computed by the printer.
-  static unsigned GetRowNameWidth(const Ty &Table) {
-    return 0;
-  }
-
   static std::string GetRowNamesHeading(const Ty &Table) {
     return "RowNames";
   }
@@ -41,13 +37,6 @@ struct DefaultTablePrintTraits {
   static std::string GetRowName(const Ty &Table,
                                 const typename TableTraits<Ty>::Row &Row) {
     return "";
-  }
-
-  // TODO: remove from the trait, width must be computed by the printer.
-  static std::vector<unsigned>
-  GetColumnWidths(const Ty &Table,
-                  const typename TableTraits<Ty>::Row &Row) {
-    return std::vector<unsigned>(TableTraits<Ty>::GetColumns(Table));
   }
 
   static std::vector<std::string> GetColumnHeadings(const Ty &Table) {
@@ -61,11 +50,33 @@ struct DefaultTablePrintTraits {
   }
 };
 
-// TODO: comment.
+// This trait allows to describe how a table should be rendered. A trait
+// specialization must define the following members:
+//
+// - static bool HasHeader(const Ty &Table): must return true if an header must
+//   be printed
+//
+// - static bool HasRowNames(const Ty &Table): must return true if a label must
+//    be printed for each table row
+//
+// - static std::string GetRowNamesHeading(const Ty &Table): must return the
+// name of the row name column
+//
+// - static std::string GetRowName(const Ty &Table,
+//                                 const typename TableTraits<Ty>::Row &Row):
+//   get the name of the given row
+//
+// - static std::vector<std::string> GetColumnHeadings(const Ty &Table): get the
+//   names of the columns
+//
+// - static std::vector<std::string>
+//   GetRowTexts(const Ty &Table,
+//               const typename TableTraits<Ty>::Row &Row): get the texts to be
+//   put inside each column of the given row
 template <typename Ty>
 struct TablePrintTraits : public DefaultTablePrintTraits<Ty> { };
 
-// TODO: comment.
+// Utility class used to print a table to a stream -- see TablePrintTraits.
 template <typename Ty>
 class TablePrinter {
 private:
@@ -77,146 +88,96 @@ public:
 
 public:
   void PrintTable(llvm::raw_ostream &OS = llvm::errs()) {
-    std::vector<unsigned> Widths;
-
-    ComputeColumnWidths(Widths);
-
-    PrintHeader(OS, Widths);
-    PrintBody(OS, Widths);
+    LoadRenderingBuffer();
+    PrintRenderingBuffer(OS);
   }
 
 private:
-  void ComputeColumnWidths(std::vector<unsigned> &Widths) {
-    typedef typename TableTraits::const_iterator row_iterator;
+  void LoadRenderingBuffer() {
+    typedef typename TableTraits::const_iterator iterator;
 
-    typedef std::vector<unsigned>::iterator width_iterator;
-    typedef std::vector<unsigned>::const_iterator const_width_iterator;
-
-    bool HasRowNames = PrintTraits::HasRowNames(Table);
-    unsigned Columns = HasRowNames + TableTraits::GetColumns(Table);
-
-    Widths.assign(Columns, 0);
-
-    row_iterator I = TableTraits::begin(Table),
-                 E = TableTraits::end(Table);
-
-    for(; I != E; ++I)
-    {
-      const std::vector<unsigned> &RowWidths =
-        PrintTraits::GetColumnWidths(Table, *I);
-
-      width_iterator J = Widths.begin(),
-                     F = Widths.end();
-
-      const_width_iterator K = RowWidths.begin(),
-                           T = RowWidths.end();
- 
-      if(HasRowNames)
-        *J++ = std::max(*J, PrintTraits::GetRowNameWidth(Table));
-
-      for(; J != F && K != T; ++J, ++K)
-        *J = std::max(*J, *K);
-    }
-  }
-
-  void
-  PrintHeader(llvm::raw_ostream &OS,
-              const std::vector<unsigned> &ColumnWidths) {
-    typedef std::vector<std::string>::const_iterator heading_iterator;
-    typedef std::vector<unsigned>::const_iterator width_iterator;
-
-    if(!PrintTraits::HasHeader(Table))
-      return;
-
-    PrintFrame(OS, '+', '-', ColumnWidths);
-
-    width_iterator I = ColumnWidths.begin(),
-                   E = ColumnWidths.end();
-
-    if(PrintTraits::HasRowNames(Table))
-      PrintCell(OS, '|', PrintTraits::GetRowNamesHeading(Table), *I++);
-
-    const std::vector<std::string> &Headings =
-      PrintTraits::GetColumnHeadings(Table);
-
-    heading_iterator J = Headings.begin(),
-                     F = Headings.end();
-
-    for(; J != F && I != E; ++J, ++I)
-      PrintCell(OS, '|', *J, *I);
-
-    OS << "|\n";
-
-    PrintFrame(OS, '+', '-', ColumnWidths);
-  }
-
-  void
-  PrintBody(llvm::raw_ostream &OS,
-            const std::vector<unsigned> &ColumnWidths) {
-    typedef typename TableTraits::const_iterator row_iterator;
-
-    typedef std::vector<std::string>::const_iterator text_iterator;
-    typedef std::vector<unsigned>::const_iterator width_iterator;
-
+    bool HasHeader = PrintTraits::HasHeader(Table);
     bool HasRowNames = PrintTraits::HasRowNames(Table);
 
-    row_iterator I = TableTraits::begin(Table),
-                 E = TableTraits::end(Table);
+    unsigned ColumnsCount = TableTraits::GetColumns(Table);
 
-    for(; I != E; ++I) {
-      width_iterator J = ColumnWidths.begin(),
-                     F = ColumnWidths.end();
+    Texts.clear();
+    ColumnWidths.assign(HasRowNames + ColumnsCount, 0);
 
-      if(HasRowNames)
-        PrintCell(OS, '|', PrintTraits::GetRowName(Table, *I), *J++);
+    if(HasHeader) {
+      const std::vector<std::string> &Header =
+        PrintTraits::GetColumnHeadings(Table);
 
-      const std::vector<std::string> &Texts =
-        PrintTraits::GetRowTexts(Table, *I);
+      if(HasRowNames) {
+        const std::string &NameHeader = PrintTraits::GetRowNamesHeading(Table);
 
-      text_iterator K = Texts.begin(),
-                    T = Texts.end();
+        Texts.push_back(NameHeader);
+        ColumnWidths[0] = NameHeader.size();
+      }
 
-      for(; K != T && J != F; ++K, ++J)
-        PrintCell(OS, '|', *K, *J);
-
-      OS << "|\n";
+      for(unsigned J = 0, F = ColumnsCount; J !=F; ++J) {
+        Texts.push_back(Header[J]);
+        ColumnWidths[HasRowNames + J] = Header[J].size();
+      }
     }
 
-    PrintFrame(OS, '+', '-', ColumnWidths);
+    for(iterator I = Table.begin(), E = Table.end(); I != E; ++I) {
+      const std::vector<std::string> &Row = PrintTraits::GetRowTexts(Table, *I);
+
+      if(HasRowNames) {
+        const std::string &RowName = PrintTraits::GetRowName(Table, *I);
+
+        Texts.push_back(RowName);
+        ColumnWidths[0] = std::max(ColumnWidths[0], RowName.size());
+      }
+
+      for(unsigned J = 0, F = ColumnsCount; J != F; ++J) {
+        Texts.push_back(Row[J]);
+        ColumnWidths[HasRowNames + J] = std::max(ColumnWidths[HasRowNames + J],
+                                                 Row[J].size());
+      }
+    }
   }
 
-  void PrintFrame(llvm::raw_ostream &OS,
-                  char Side,
-                  char Inner,
-                  const std::vector<unsigned> &ColumnWidths) {
-    typedef std::vector<unsigned>::const_iterator iterator;
+  void PrintRenderingBuffer(llvm::raw_ostream &OS) const {
+    bool HasHeader = PrintTraits::HasHeader(Table);
+    unsigned ColumnsCount = ColumnWidths.size();
 
-    iterator I = ColumnWidths.begin(),
-             E = ColumnWidths.end();
+    PrintFrame(OS);
 
-    if(I == E)
-      return;
+    for(unsigned I = 0, E = Texts.size(); I != E; ++I) {
+      const std::string &Text = Texts[I];
+      std::string Padding(ColumnWidths[I % ColumnsCount] - Text.size(), ' ');
 
-    OS << Side;
+      OS << "| " << Texts[I] << Padding << " ";
 
-    for(; I != E; ++I) {
-      std::string InnerRep(*I + 2, Inner);
-      OS << InnerRep << Side;
+      if(I % ColumnsCount == ColumnsCount - 1) {
+        OS << "|\n";
+
+        if(HasHeader && I == ColumnsCount - 1)
+          PrintFrame(OS);
+      }
     }
 
-    OS << "\n";
+    PrintFrame(OS);
   }
 
-  void PrintCell(llvm::raw_ostream &OS,
-                 char Side,
-                 const std::string &Text,
-                 unsigned ColumnWidth) {
-    std::string Padding(ColumnWidth - Text.size(), ' ');
-    OS << "| " << Text << Padding << " ";
+  void PrintFrame(llvm::raw_ostream &OS) const {
+    OS << '+';
+
+    for(size_t I = 0, E = ColumnWidths.size(); I != E; ++I) {
+      std::string InnerRep(ColumnWidths[I] + 2, '-');
+      OS << InnerRep << '+';
+    }
+
+    OS << '\n';
   }
 
 private:
   const Ty &Table;
+
+  std::vector<std::string> Texts;
+  std::vector<size_t> ColumnWidths;
 };
 
 template <typename Ty>
