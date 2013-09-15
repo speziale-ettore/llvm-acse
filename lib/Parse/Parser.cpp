@@ -1148,29 +1148,6 @@ struct FrameTraits<ParsingFrame<Token *, ExpressionAST *> > {
 
 template <>
 struct FramePrintTraits<ParsingFrame<Token *, ExpressionAST *> > {
-  // TODO: remove and improve the table printer such as it computes the widths
-  // in a pre-rendering step.
-  static
-  unsigned GetWidth(const ParsingFrame<Token *, ExpressionAST *> &Frame) {
-    std::string TokLine, ExprLine;
-    llvm::raw_string_ostream TS(TokLine), ES(ExprLine);
-
-    Token *Tok = Frame.GetFirst();
-    ExpressionAST *Expr = Frame.GetSecond();
-
-    if(Tok) {
-      TS << Tok->GetId();
-      TS.flush();
-    }
-
-    if(Expr) {
-      ES << Expr->GetId();
-      ES.flush();
-    }
-
-    return std::max(TokLine.size(), ExprLine.size());
-  }
-
   static
   std::string GetText(const ParsingFrame<Token *, ExpressionAST *> &Frame) {
     std::string TokLine, ExprLine, Text;
