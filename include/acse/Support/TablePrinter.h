@@ -115,7 +115,7 @@ private:
         ColumnWidths[0] = NameHeader.size();
       }
 
-      for(unsigned J = 0, F = ColumnsCount; J !=F; ++J) {
+      for(unsigned J = 0, F = ColumnsCount; J != F; ++J) {
         Texts.push_back(Header[J]);
         ColumnWidths[HasRowNames + J] = Header[J].size();
       }
