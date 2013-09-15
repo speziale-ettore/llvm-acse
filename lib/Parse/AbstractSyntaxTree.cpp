@@ -61,12 +61,15 @@ namespace {
 class AbstractSyntaxTreePrinter
   : public PreOrderAbstractSyntaxTreeVisitor<AbstractSyntaxTreePrinter> {
 public:
-  AbstractSyntaxTreePrinter(const AbstractSyntaxTree &AST,
-                            llvm::raw_ostream &OS)
-    : PreOrderAbstractSyntaxTreeVisitor(AST),
-      OS(OS) { }
+  AbstractSyntaxTreePrinter(const AbstractSyntaxTree &AST)
+    : PreOrderAbstractSyntaxTreeVisitor(AST) { }
 
 public:
+  void PrintAST(llvm::raw_ostream &OS = llvm::errs()) {
+    this->OS = &OS;
+    Visit();
+  }
+
   #define AST(I)                               \
   NextAction Visit ## I(const I ## AST &AST) { \
     PrintInEdge();                             \
@@ -86,31 +89,31 @@ private:
     if(I == E)
       return;
 
-    OS << " ";
+    *OS << " ";
     for(iterator J = I++; I != E; ++I, ++J) {
       if(!J->IsRightmostChild(&*I))
-        OS << "|";
+        *OS << "|";
       else
-        OS << " ";
-      OS << "    ";
+        *OS << " ";
+      *OS << "    ";
     }
 
-    OS << "+-> ";
+    *OS << "+-> ";
   }
 
   void PrintRule(const AbstractSyntaxTreeNode &AST) {
     if(llvm::isa<ExpressionAST>(AST))
-      OS << "Expression";
+      *OS << "Expression";
     else
-      OS << AST.GetId();
+      *OS << AST.GetId();
   }
 
   void PrintOutEdge() {
-    OS << "\n";
+    *OS << "\n";
   }
 
 private:
-  llvm::raw_ostream &OS;
+  llvm::raw_ostream *OS;
 };
 
 } // End anonymous namespace.
@@ -148,8 +151,8 @@ llvm::raw_ostream &acse::operator<<(llvm::raw_ostream &OS,
 //
 
 void AbstractSyntaxTree::Dump(llvm::raw_ostream &OS) const {
-  AbstractSyntaxTreePrinter Printer(*this, OS);
-  Printer.Visit();
+  AbstractSyntaxTreePrinter Printer(*this);
+  Printer.PrintAST(OS);
 }
 
 void AbstractSyntaxTree::View() const {
