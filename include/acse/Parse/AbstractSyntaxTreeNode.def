@@ -56,6 +56,14 @@ AST(ArrayAssignment)
 AST(ReadStatement)
 AST(WriteStatement)
 
+// Non-terminal rule ASTs: controls.
+AST(IfStatement)
+AST(WhileStatement)
+AST(DoWhileStatement)
+
+// Not-terminal rule ASTs: code blocks.
+AST(CodeBlock)
+
 // Non-terminal rule ASTs: algebraic expressions.
 AST(AddExpr) // '+'
 AST(SubExpr) // '-'

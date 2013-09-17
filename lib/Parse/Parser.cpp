@@ -574,8 +574,26 @@ NullStatementAST *Parser::ParseNullStatement() {
   return new NullStatementAST(new EmptyAST());
 }
 
+// control_statement
+//   : if_statement
+//   | while_statement
+//   | do_statement
 ControlStatementAST *Parser::ParseControlStatement() {
-  return 0;
+  ControlStatementAST *Stmt = 0;
+
+  // Try parsing an 'if_statement', ...
+  if(IfStatementAST *If = ParseIfStatement())
+    Stmt = new ControlStatementAST(If);
+
+  // ... a 'while_statement', ...
+  else if(WhileStatementAST *While = ParseWhileStatement())
+    Stmt = new ControlStatementAST(While);
+
+  // ... or a 'do_while_statement'.
+  else if(DoWhileStatementAST *DoWhile = ParseDoWhileStatement())
+    Stmt = new ControlStatementAST(DoWhile);
+
+  return Stmt;
 }
 
 // scalar_assignment
@@ -750,6 +768,114 @@ WriteStatementAST *Parser::ParseWriteStatement() {
                                LPar.take(),
                                Expr.take(),
                                RPar.take());
+}
+
+// if_statement
+//   : *If* *LPar* expression *RPar* code_block
+//   | *If* *LPar* expression *RPar* code_block *Else* code_block
+IfStatementAST *Parser::ParseIfStatement() {
+  llvm::OwningPtr<IfAST> If;
+  llvm::OwningPtr<LParAST> LPar;
+  llvm::OwningPtr<ExpressionAST> Expr;
+  llvm::OwningPtr<RParAST> RPar;
+  llvm::OwningPtr<CodeBlockAST> Taken;
+  llvm::OwningPtr<ElseAST> Else;
+  llvm::OwningPtr<CodeBlockAST> NotTaken;
+
+  // First token must be the 'if' keyword, ...
+  if(!llvm::dyn_cast_or_null<IfTok>(Lex.Peek(0)))
+    return 0;
+
+  If.reset(new IfAST(Lex.TakeAs<IfTok>()));
+
+  // ... then, an '(' is expected.
+  if(!llvm::dyn_cast_or_null<LParTok>(Lex.Peek(0)))
+    return 0;
+
+  LPar.reset(new LParAST(Lex.TakeAs<LParTok>()));
+
+  // Try to parse an expression to be used as condition.
+  Expr.reset(ParseExpression());
+
+  if(!Expr)
+    return 0;
+
+  // The expression must be followed by a ')'.
+  if(!llvm::dyn_cast_or_null<RParTok>(Lex.Peek(0)))
+    return 0;
+
+  RPar.reset(new RParAST(Lex.TakeAs<RParTok>()));
+
+  // Now try to parse a block of code.
+  Taken.reset(ParseCodeBlock());
+
+  if(!Taken)
+    return 0;
+
+  // Check if an else branch is available.
+  if(llvm::dyn_cast_or_null<ElseTok>(Lex.Peek(0))) {
+    Else.reset(new ElseAST(Lex.TakeAs<ElseTok>()));
+
+    // If the else branch is available, we need a code block.
+    NotTaken.reset(ParseCodeBlock());
+
+    if(!NotTaken)
+      return 0;
+  }
+
+  return new IfStatementAST(If.take(),
+                            LPar.take(),
+                            Expr.take(),
+                            RPar.take(),
+                            Taken.take(),
+                            Else.take(),
+                            NotTaken.take());
+}
+
+WhileStatementAST *Parser::ParseWhileStatement() {
+  return 0;
+}
+
+DoWhileStatementAST *Parser::ParseDoWhileStatement() {
+  return 0;
+}
+
+// code_block
+//   : *LBrace* statements *RBrace*
+//   | statement
+CodeBlockAST *Parser::ParseCodeBlock() {
+  CodeBlockAST *Stmt = 0;
+
+  // By checking the current character we can understand whether multiple
+  // statements should be parsed.
+  if(llvm::dyn_cast_or_null<LBraceTok>(Lex.Peek(0))) {
+    llvm::OwningPtr<LBraceAST> LBrace;
+    llvm::OwningPtr<StatementsAST> Stmts;
+    llvm::OwningPtr<RBraceAST> RBrace;
+
+    // Opening mark.
+    LBrace.reset(new LBraceAST(Lex.TakeAs<LBraceTok>()));
+
+    // Statement list.
+    Stmts.reset(ParseStatements());
+
+    if(!Stmts)
+      return 0;
+
+    // Closing mark.
+    if(!llvm::dyn_cast_or_null<RBraceTok>(Lex.Peek(0)))
+      return 0;
+
+    RBrace.reset(new RBraceAST(Lex.TakeAs<RBraceTok>()));
+
+    Stmt = new CodeBlockAST(LBrace.take(), Stmts.take(), RBrace.take());
+
+  // The 'code_block' is actually a single statement.
+  } else if(StatementAST *Stmts = ParseStatement()) {
+    Stmt = new CodeBlockAST(Stmts);
+  }
+
+  return Stmt;
 }
 
 // expression

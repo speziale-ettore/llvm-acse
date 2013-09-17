@@ -357,6 +357,12 @@ private:
   ReadStatementAST *ParseReadStatement();
   WriteStatementAST *ParseWriteStatement();
 
+  IfStatementAST *ParseIfStatement();
+  WhileStatementAST *ParseWhileStatement();
+  DoWhileStatementAST *ParseDoWhileStatement();
+
+  CodeBlockAST *ParseCodeBlock();
+
   ExpressionAST *ParseExpression();
   ExpressionAST *ParsePrimaryExpression();
 

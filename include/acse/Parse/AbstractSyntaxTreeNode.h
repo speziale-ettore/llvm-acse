@@ -266,7 +266,8 @@ protected:
                          AbstractSyntaxTreeNode *T2 = 0,
                          AbstractSyntaxTreeNode *T3 = 0,
                          AbstractSyntaxTreeNode *T4 = 0,
-                         AbstractSyntaxTreeNode *T5 = 0)
+                         AbstractSyntaxTreeNode *T5 = 0,
+                         AbstractSyntaxTreeNode *T6 = 0)
     : MyIdentifier(Identifier) {
     NodeDataPtr Ptr;
 
@@ -282,6 +283,7 @@ protected:
     TREE_INSERT(T3)
     TREE_INSERT(T4)
     TREE_INSERT(T5)
+    TREE_INSERT(T6)
 
     #undef TREE_INSERT
   }
@@ -505,6 +507,11 @@ public:                                                                 \
 // This turns out that a better solution is to declare all classes in a reverse
 // order: first the referred, then the referencing: the amount of code that
 // should be written is minimized.
+
+// The exception to the aforementioned rules are the following two classes. They
+// need to be forwarded declared in order to be used by CodeBlockAST.
+class StatementsAST;
+class StatementAST;
 
 //
 // Special ASTs.
@@ -778,6 +785,20 @@ BINARY_EXPR_AST(LOr)
 
 #undef BINARY_EXPR_AST
 
+// code_block
+//   : *LBrace* statements *RBrace*
+//   | statement
+class CodeBlockAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == CodeBlock;
+  }
+
+public:
+  CodeBlockAST(LBraceAST *LBrace, StatementsAST *Stmts, RBraceAST *RBrace);
+  CodeBlockAST(StatementAST *Stmt);
+};
+
 // scalar_assignment
 //   : *Identifier* *Assign* expression
 class ScalarAssignmentAST : public AbstractSyntaxTreeNode {
@@ -894,11 +915,68 @@ public:
     : AbstractSyntaxTreeNode(NullStatement, Eps) { }
 };
 
+// if_statement
+//   : *If* *LPar* expression *RPar* code_block
+//   | *If* *LPar* expression *RPar* code_block *Else* code_block
+class IfStatementAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == IfStatement;
+  }
+
+public:
+  IfStatementAST(IfAST *If,
+                 LParAST *LPar,
+                 ExpressionAST *Expr,
+                 RParAST *RPar,
+                 CodeBlockAST *Taken,
+                 ElseAST *Else = 0,
+                 CodeBlockAST *NotTaken = 0)
+    : AbstractSyntaxTreeNode(IfStatement,
+                             If,
+                             LPar,
+                             Expr,
+                             RPar,
+                             Taken,
+                             Else,
+                             NotTaken) {
+    assert((Else && NotTaken || !Else && !NotTaken) && "Missing elements");
+  }
+};
+
+class WhileStatementAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == WhileStatement;
+  }
+};
+
+class DoWhileStatementAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == DoWhileStatement;
+  }
+};
+
+// control_statement
+//   : if_statement
+//   | while_statement
+//   | do_statement
 class ControlStatementAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == ControlStatement;
   }
+
+public:
+  ControlStatementAST(IfStatementAST *If)
+    : AbstractSyntaxTreeNode(ControlStatement, If) { }
+
+  ControlStatementAST(WhileStatementAST *While)
+    : AbstractSyntaxTreeNode(ControlStatement, While) { }
+
+  ControlStatementAST(DoWhileStatementAST *DoWhile)
+    : AbstractSyntaxTreeNode(ControlStatement, DoWhile) { }
 };
 
 // statement
@@ -1249,6 +1327,8 @@ struct GraphTraits<const AbstractSyntaxTreeNode *> {
 
 // Some AbstractSyntaxTreeNode member functions requires GraphTraits, hence I
 // had to write their inline implementations outside class definition.
+//
+// The same holds for CodeBlockAST -- it needs StatementsAST and StatementAST.
 namespace acse {
 
 inline AbstractSyntaxTreeNode::iterator AbstractSyntaxTreeNode::begin() {
@@ -1324,6 +1404,14 @@ AbstractSyntaxTreeNode::~AbstractSyntaxTreeNode() {
     if(*I != this) delete *I;
   }
 }
+
+inline CodeBlockAST::CodeBlockAST(LBraceAST *LBrace,
+                                  StatementsAST *Stmts,
+                                  RBraceAST *RBrace)
+  : AbstractSyntaxTreeNode(CodeBlock, LBrace, Stmts, RBrace) { }
+
+inline CodeBlockAST::CodeBlockAST(StatementAST *Stmt)
+  : AbstractSyntaxTreeNode(CodeBlock, Stmt) { }
 
 } // End namespace acse.
 
