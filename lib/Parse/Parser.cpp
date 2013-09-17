@@ -832,8 +832,50 @@ IfStatementAST *Parser::ParseIfStatement() {
                             NotTaken.take());
 }
 
+// while_statement
+//   : *While* *LPar* expression *RPar* code_block
 WhileStatementAST *Parser::ParseWhileStatement() {
-  return 0;
+  llvm::OwningPtr<WhileAST> While;
+  llvm::OwningPtr<LParAST> LPar;
+  llvm::OwningPtr<ExpressionAST> Expr;
+  llvm::OwningPtr<RParAST> RPar;
+  llvm::OwningPtr<CodeBlockAST> Body;
+
+  // First token must be the 'while' keyword, ...
+  if(!llvm::dyn_cast_or_null<WhileTok>(Lex.Peek(0)))
+    return 0;
+
+  While.reset(new WhileAST(Lex.TakeAs<WhileTok>()));
+
+  // ... and an '(' should follow.
+  if(!llvm::dyn_cast_or_null<LParTok>(Lex.Peek(0)))
+    return 0;
+
+  LPar.reset(new LParAST(Lex.TakeAs<LParTok>()));
+
+  // Try parsing the loop test.
+  Expr.reset(ParseExpression());
+
+  if(!Expr)
+    return 0;
+
+  // A ')' should follow the loop test.
+  if(!llvm::dyn_cast_or_null<RParTok>(Lex.Peek(0)))
+    return 0;
+
+  RPar.reset(new RParAST(Lex.TakeAs<RParTok>()));
+
+  // At last, try parsing the loop body.
+  Body.reset(ParseCodeBlock());
+
+  if(!Body)
+    return 0;
+
+  return new WhileStatementAST(While.take(),
+                               LPar.take(),
+                               Expr.take(),
+                               RPar.take(),
+                               Body.take());
 }
 
 DoWhileStatementAST *Parser::ParseDoWhileStatement() {

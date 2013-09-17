@@ -944,11 +944,21 @@ public:
   }
 };
 
+// while_statement
+//   : *While* *LPar* expression *RPar* code_block
 class WhileStatementAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == WhileStatement;
   }
+
+public:
+  WhileStatementAST(WhileAST *While,
+                    LParAST *LPar,
+                    ExpressionAST *Expr,
+                    RParAST *RPar,
+                    CodeBlockAST *Body)
+    : AbstractSyntaxTreeNode(WhileStatement, LPar, Expr, RPar, Body) { }
 };
 
 class DoWhileStatementAST : public AbstractSyntaxTreeNode {
