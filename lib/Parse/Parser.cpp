@@ -789,8 +789,10 @@ IfStatementAST *Parser::ParseIfStatement() {
   If.reset(new IfAST(Lex.TakeAs<IfTok>()));
 
   // ... then, an '(' is expected.
-  if(!llvm::dyn_cast_or_null<LParTok>(Lex.Peek(0)))
+  if(!llvm::dyn_cast_or_null<LParTok>(Lex.Peek(0))) {
+    ReportError(ExpectedLPar, Lex.GetCurrentLoc());
     return 0;
+  }
 
   LPar.reset(new LParAST(Lex.TakeAs<LParTok>()));
 
@@ -801,8 +803,10 @@ IfStatementAST *Parser::ParseIfStatement() {
     return 0;
 
   // The expression must be followed by a ')'.
-  if(!llvm::dyn_cast_or_null<RParTok>(Lex.Peek(0)))
+  if(!llvm::dyn_cast_or_null<RParTok>(Lex.Peek(0))) {
+    ReportError(ExpectedRPar, Lex.GetCurrentLoc());
     return 0;
+  }
 
   RPar.reset(new RParAST(Lex.TakeAs<RParTok>()));
 
@@ -848,8 +852,10 @@ WhileStatementAST *Parser::ParseWhileStatement() {
   While.reset(new WhileAST(Lex.TakeAs<WhileTok>()));
 
   // ... and an '(' should follow.
-  if(!llvm::dyn_cast_or_null<LParTok>(Lex.Peek(0)))
+  if(!llvm::dyn_cast_or_null<LParTok>(Lex.Peek(0))) {
+    ReportError(ExpectedLPar, Lex.GetCurrentLoc());
     return 0;
+  }
 
   LPar.reset(new LParAST(Lex.TakeAs<LParTok>()));
 
@@ -860,8 +866,10 @@ WhileStatementAST *Parser::ParseWhileStatement() {
     return 0;
 
   // A ')' should follow the loop test.
-  if(!llvm::dyn_cast_or_null<RParTok>(Lex.Peek(0)))
+  if(!llvm::dyn_cast_or_null<RParTok>(Lex.Peek(0))) {
+    ReportError(ExpectedRPar, Lex.GetCurrentLoc());
     return 0;
+  }
 
   RPar.reset(new RParAST(Lex.TakeAs<RParTok>()));
 
@@ -902,14 +910,18 @@ DoWhileStatementAST *Parser::ParseDoWhileStatement() {
     return 0;
 
   // The 'while' keyword mark the start of the loop test.
-  if(!llvm::dyn_cast_or_null<WhileTok>(Lex.Peek(0)))
+  if(!llvm::dyn_cast_or_null<WhileTok>(Lex.Peek(0))) {
+    ReportError(ExpectedWhile, Lex.GetCurrentLoc());
     return 0;
+  }
 
   While.reset(new WhileAST(Lex.TakeAs<WhileTok>()));
 
   // A '(' comes before the loop test expression.
-  if(!llvm::dyn_cast_or_null<LParTok>(Lex.Peek(0)))
+  if(!llvm::dyn_cast_or_null<LParTok>(Lex.Peek(0))) {
+    ReportError(ExpectedLPar, Lex.GetCurrentLoc());
     return 0;
+  }
 
   LPar.reset(new LParAST(Lex.TakeAs<LParTok>()));
 
@@ -920,15 +932,19 @@ DoWhileStatementAST *Parser::ParseDoWhileStatement() {
     return 0;
 
   // A ')' terminates the loop test.
-  if(!llvm::dyn_cast_or_null<RParTok>(Lex.Peek(0)))
+  if(!llvm::dyn_cast_or_null<RParTok>(Lex.Peek(0))) {
+    ReportError(ExpectedRPar, Lex.GetCurrentLoc());
     return 0;
+  }
 
   RPar.reset(new RParAST(Lex.TakeAs<RParTok>()));
 
   // The 'do_while_statement' must be terminated by a semicolon in order to
   // avoid ambiguities due to the concatenation with a 'while_statement'.
-  if(!llvm::dyn_cast_or_null<SemiColonTok>(Lex.Peek(0)))
+  if(!llvm::dyn_cast_or_null<SemiColonTok>(Lex.Peek(0))) {
+    ReportError(ExpectedSemiColon, Lex.GetCurrentLoc());
     return 0;
+  }
 
   SemiColon.reset(new SemiColonAST(Lex.TakeAs<SemiColonTok>()));
 
@@ -964,8 +980,10 @@ CodeBlockAST *Parser::ParseCodeBlock() {
       return 0;
 
     // Closing mark.
-    if(!llvm::dyn_cast_or_null<RBraceTok>(Lex.Peek(0)))
+    if(!llvm::dyn_cast_or_null<RBraceTok>(Lex.Peek(0))) {
+      ReportError(ExpectedRBrace, Lex.GetCurrentLoc());
       return 0;
+    }
 
     RBrace.reset(new RBraceAST(Lex.TakeAs<RBraceTok>()));
 
