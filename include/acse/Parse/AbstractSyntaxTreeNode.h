@@ -961,11 +961,29 @@ public:
     : AbstractSyntaxTreeNode(WhileStatement, LPar, Expr, RPar, Body) { }
 };
 
+// do_while_statement
+//   : *Do* code_block *While* *RPar* expression *RPar* *SemiColon*
 class DoWhileStatementAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == DoWhileStatement;
   }
+
+public:
+  DoWhileStatementAST(DoAST *Do,
+                      CodeBlockAST *Body,
+                      WhileAST *While,
+                      LParAST *LPar,
+                      ExpressionAST *Expr,
+                      RParAST *RPar,
+                      SemiColonAST *Semi)
+    : AbstractSyntaxTreeNode(DoWhileStatement,
+                             Body,
+                             While,
+                             LPar,
+                             Expr,
+                             RPar,
+                             Semi) { }
 };
 
 // control_statement

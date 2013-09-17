@@ -878,8 +878,67 @@ WhileStatementAST *Parser::ParseWhileStatement() {
                                Body.take());
 }
 
+// do_while_statement
+//   : *Do* code_block *While* *RPar* expression *RPar* *SemiColon*
 DoWhileStatementAST *Parser::ParseDoWhileStatement() {
-  return 0;
+  llvm::OwningPtr<DoAST> Do;
+  llvm::OwningPtr<CodeBlockAST> Body;
+  llvm::OwningPtr<WhileAST> While;
+  llvm::OwningPtr<LParAST> LPar;
+  llvm::OwningPtr<ExpressionAST> Expr;
+  llvm::OwningPtr<RParAST> RPar;
+  llvm::OwningPtr<SemiColonAST> SemiColon;
+
+  // The first token should be the 'do' keyword.
+  if(!llvm::dyn_cast_or_null<DoTok>(Lex.Peek(0)))
+    return 0;
+
+  Do.reset(new DoAST(Lex.TakeAs<DoTok>()));
+
+  // The body of the loop is expected next.
+  Body.reset(ParseCodeBlock());
+
+  if(!Body)
+    return 0;
+
+  // The 'while' keyword mark the start of the loop test.
+  if(!llvm::dyn_cast_or_null<WhileTok>(Lex.Peek(0)))
+    return 0;
+
+  While.reset(new WhileAST(Lex.TakeAs<WhileTok>()));
+
+  // A '(' comes before the loop test expression.
+  if(!llvm::dyn_cast_or_null<LParTok>(Lex.Peek(0)))
+    return 0;
+
+  LPar.reset(new LParAST(Lex.TakeAs<LParTok>()));
+
+  // Try parsing the expression used for the loop test.
+  Expr.reset(ParseExpression());
+
+  if(!Expr)
+    return 0;
+
+  // A ')' terminates the loop test.
+  if(!llvm::dyn_cast_or_null<RParTok>(Lex.Peek(0)))
+    return 0;
+
+  RPar.reset(new RParAST(Lex.TakeAs<RParTok>()));
+
+  // The 'do_while_statement' must be terminated by a semicolon in order to
+  // avoid ambiguities due to the concatenation with a 'while_statement'.
+  if(!llvm::dyn_cast_or_null<SemiColonTok>(Lex.Peek(0)))
+    return 0;
+
+  SemiColon.reset(new SemiColonAST(Lex.TakeAs<SemiColonTok>()));
+
+  return new DoWhileStatementAST(Do.take(),
+                                 Body.take(),
+                                 While.take(),
+                                 LPar.take(),
+                                 Expr.take(),
+                                 RPar.take(),
+                                 SemiColon.take());
 }
 
 // code_block
