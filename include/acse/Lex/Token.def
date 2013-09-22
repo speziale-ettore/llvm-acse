@@ -58,13 +58,14 @@ TOKEN(LAnd) // '&&'
 TOKEN(LOr)  // '||'
 
 // Keywords.
-TOKEN(Int)   // 'int'
-TOKEN(If)    // 'if'
-TOKEN(Else)  // 'else'
-TOKEN(Do)    // 'do'
-TOKEN(While) // 'while'
-TOKEN(Read)  // 'read'
-TOKEN(Write) // 'write'
+TOKEN(Int)    // 'int'
+TOKEN(If)     // 'if'
+TOKEN(Else)   // 'else'
+TOKEN(Do)     // 'do'
+TOKEN(While)  // 'while'
+TOKEN(Return) // 'return'
+TOKEN(Read)   // 'read'
+TOKEN(Write)  // 'write'
 
 // Typed.
 //

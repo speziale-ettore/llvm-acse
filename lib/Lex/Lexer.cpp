@@ -290,6 +290,7 @@ bool Lexer::ScanIdentifier() {
   TOKEN("else", Else)
   TOKEN("do", Do)
   TOKEN("while", While)
+  TOKEN("return", Return)
   TOKEN("read", Read)
   TOKEN("write", Write)
 

@@ -158,6 +158,7 @@ TOKEN(If)
 TOKEN(Else)
 TOKEN(Do)
 TOKEN(While)
+TOKEN(Return)
 TOKEN(Read)
 TOKEN(Write)
 
