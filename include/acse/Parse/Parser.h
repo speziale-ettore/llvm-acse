@@ -360,6 +360,7 @@ private:
   IfStatementAST *ParseIfStatement();
   WhileStatementAST *ParseWhileStatement();
   DoWhileStatementAST *ParseDoWhileStatement();
+  ReturnStatementAST *ParseReturnStatement();
 
   CodeBlockAST *ParseCodeBlock();
 

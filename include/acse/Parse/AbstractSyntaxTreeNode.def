@@ -60,6 +60,7 @@ AST(WriteStatement)
 AST(IfStatement)
 AST(WhileStatement)
 AST(DoWhileStatement)
+AST(ReturnStatement)
 
 // Not-terminal rule ASTs: code blocks.
 AST(CodeBlock)

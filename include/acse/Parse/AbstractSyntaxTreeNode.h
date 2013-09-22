@@ -987,10 +987,24 @@ public:
                              Semi) { }
 };
 
+// return_statement
+//   : *Return* *SemiColon*
+class ReturnStatementAST : public AbstractSyntaxTreeNode {
+public:
+  static inline bool classof(const AbstractSyntaxTreeNode *AST) {
+    return AST->GetId() == ReturnStatement;
+  }
+
+public:
+  ReturnStatementAST(ReturnAST *Return, SemiColonAST *Semi)
+    : AbstractSyntaxTreeNode(ReturnStatement, Return, Semi) { }
+};
+
 // control_statement
 //   : if_statement
 //   | while_statement
 //   | do_statement
+//   | return_statement
 class ControlStatementAST : public AbstractSyntaxTreeNode {
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
@@ -1006,6 +1020,9 @@ public:
 
   ControlStatementAST(DoWhileStatementAST *DoWhile)
     : AbstractSyntaxTreeNode(ControlStatement, DoWhile) { }
+
+  ControlStatementAST(ReturnStatementAST *Return)
+    : AbstractSyntaxTreeNode(ControlStatement, Return) { }
 };
 
 // statement

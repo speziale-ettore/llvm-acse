@@ -513,6 +513,7 @@ StatementAST *Parser::ParseStatement() {
   case Token::If:
   case Token::Do:
   case Token::While:
+  case Token::Return:
     if(ControlStatementAST *Control = ParseControlStatement())
       Stmt = new StatementAST(Control);
     break;
@@ -578,6 +579,7 @@ NullStatementAST *Parser::ParseNullStatement() {
 //   : if_statement
 //   | while_statement
 //   | do_statement
+//   | return_statement
 ControlStatementAST *Parser::ParseControlStatement() {
   ControlStatementAST *Stmt = 0;
 
@@ -589,9 +591,13 @@ ControlStatementAST *Parser::ParseControlStatement() {
   else if(WhileStatementAST *While = ParseWhileStatement())
     Stmt = new ControlStatementAST(While);
 
-  // ... or a 'do_while_statement'.
+  // ... a 'do_while_statement', or ...
   else if(DoWhileStatementAST *DoWhile = ParseDoWhileStatement())
     Stmt = new ControlStatementAST(DoWhile);
+
+  // ... a 'return_statement'.
+  else if(ReturnStatementAST *Return = ParseReturnStatement())
+    Stmt = new ControlStatementAST(Return);
 
   return Stmt;
 }
@@ -955,6 +961,25 @@ DoWhileStatementAST *Parser::ParseDoWhileStatement() {
                                  Expr.take(),
                                  RPar.take(),
                                  SemiColon.take());
+}
+
+// return_statement
+//   : *Return* *SemiColon*
+ReturnStatementAST *Parser::ParseReturnStatement() {
+  llvm::OwningPtr<ReturnAST> Return;
+  llvm::OwningPtr<SemiColonAST> SemiColon;
+
+  if(!llvm::dyn_cast_or_null<ReturnTok>(Lex.Peek(0)))
+    return 0;
+
+  Return.reset(new ReturnAST(Lex.TakeAs<ReturnTok>()));
+
+  if(!llvm::dyn_cast_or_null<SemiColonTok>(Lex.Peek(0)))
+    return 0;
+
+  SemiColon.reset(new SemiColonAST(Lex.TakeAs<SemiColonTok>()));
+
+  return new ReturnStatementAST(Return.take(), SemiColon.take());
 }
 
 // code_block
