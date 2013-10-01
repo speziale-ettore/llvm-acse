@@ -8,6 +8,6 @@ LEVEL = ..
 #
 # List all of the subdirectories that we will compile.
 #
-DIRS = IR Lex Parse
+DIRS = IR Lex Parse Compile
 
 include $(LEVEL)/Makefile.common
