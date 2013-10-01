@@ -12,7 +12,7 @@
 
 #include "acse/ADT/TableTraits.h"
 #include "acse/Lex/Lexer.h"
-#include "acse/Parse/AbstractSyntaxTree.h"
+#include "acse/IR/AbstractSyntaxTree.h"
 #include "acse/Parse/ParsingStack.h"
 
 #include "llvm/ADT/IntrusiveRefCntPtr.h"

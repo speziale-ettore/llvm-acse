@@ -5,6 +5,6 @@ LEVEL = ../..
 TOOLNAME = acse-parse
 
 LINK_COMPONENTS = support
-USEDLIBS = acseParse.a acseLex.a
+USEDLIBS = acseParse.a acseLex.a acseIR.a
 
 include $(LEVEL)/Makefile.common

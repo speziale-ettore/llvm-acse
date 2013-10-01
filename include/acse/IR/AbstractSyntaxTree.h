@@ -7,10 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef ACSE_PARSE_ABSTRACTSYNTAXTREE_H
-#define ACSE_PARSE_ABSTRACTSYNTAXTREE_H
+#ifndef ACSE_IR_ABSTRACTSYNTAXTREE_H
+#define ACSE_IR_ABSTRACTSYNTAXTREE_H
 
-#include "acse/Parse/AbstractSyntaxTreeNode.h"
+#include "acse/IR/AbstractSyntaxTreeNode.h"
 
 #include "llvm/ADT/DepthFirstIterator.h"
 #include "llvm/ADT/OwningPtr.h"
@@ -140,4 +140,4 @@ struct GraphTraits<const AbstractSyntaxTree *>
 
 } // End namespace llvm.
 
-#endif // ACSE_PARSE_ABSTRACTSYNTAXTREE_H
+#endif // ACSE_IR_ABSTRACTSYNTAXTREE_H

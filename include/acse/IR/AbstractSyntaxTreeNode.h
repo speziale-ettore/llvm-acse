@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef ACSE_LEX_ABSTRACTSYNTAXTREENODE_H
-#define ACSE_LEX_ABSTRACTSYNTAXTREENODE_H
+#ifndef ACSE_IR_ABSTRACTSYNTAXTREENODE_H
+#define ACSE_IR_ABSTRACTSYNTAXTREENODE_H
 
 #include "acse/Lex/Token.h"
 
@@ -17,7 +17,6 @@
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Support/Casting.h"
 
-// TODO: put grammar rule on top of each corresponding node type.
 namespace acse {
 
 // The abstract syntax tree -- AST -- is the central structure of every compiler
@@ -73,7 +72,7 @@ public:
     // AbstractSyntaxTreeNode. Every entity X is represented by class XAST.
     #define AST(I) \
     I,
-    #include "acse/Parse/AbstractSyntaxTreeNode.def"
+    #include "acse/IR/AbstractSyntaxTreeNode.def"
     #undef AST
 
     // Special enum values.
@@ -1461,4 +1460,4 @@ inline CodeBlockAST::CodeBlockAST(StatementAST *Stmt)
 
 } // End namespace acse.
 
-#endif // ACSE_LEX_ABSTRACTSYNTAXTREENODE_H
+#endif // ACSE_IR_ABSTRACTSYNTAXTREENODE_H

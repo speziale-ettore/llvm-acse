@@ -7,8 +7,8 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "acse/Parse/AbstractSyntaxTree.h"
-#include "acse/Parse/AbstractSyntaxTreeVisitor.h"
+#include "acse/IR/AbstractSyntaxTree.h"
+#include "acse/IR/AbstractSyntaxTreeVisitor.h"
 
 #include "llvm/Support/GraphWriter.h"
 
@@ -78,7 +78,7 @@ public:
                                                \
     return Continue;                           \
   }
-  #include "acse/Parse/AbstractSyntaxTreeNode.def"
+  #include "acse/IR/AbstractSyntaxTreeNode.def"
   #undef AST
 
 private:
@@ -139,7 +139,7 @@ llvm::raw_ostream &acse::operator<<(llvm::raw_ostream &OS,
   case AbstractSyntaxTreeNode::I: \
     OS << # I;                    \
     break;
-  #include "acse/Parse/AbstractSyntaxTreeNode.def"
+  #include "acse/IR/AbstractSyntaxTreeNode.def"
   #undef AST
   }
 

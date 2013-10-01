@@ -7,10 +7,10 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef ACSE_PARSE_ABSTRACTSYNTAXTREEVISITOR_H
-#define ACSE_PARSE_ABSTRACTSYNTAXTREEVISITOR_H
+#ifndef ACSE_IR_ABSTRACTSYNTAXTREEVISITOR_H
+#define ACSE_IR_ABSTRACTSYNTAXTREEVISITOR_H
 
-#include "acse/Parse/AbstractSyntaxTree.h"
+#include "acse/IR/AbstractSyntaxTree.h"
 
 #include "llvm/Support/ErrorHandling.h"
 
@@ -187,7 +187,7 @@ public:
   NextAction Visit ## I(const I ## AST &AST) { \
     return Continue;                           \
   }
-  #include "acse/Parse/AbstractSyntaxTreeNode.def"
+  #include "acse/IR/AbstractSyntaxTreeNode.def"
   #undef AST
 
 private:
@@ -197,7 +197,7 @@ private:
     #define AST(I)                                              \
     if(const I ## AST *Casted = llvm::dyn_cast<I ## AST>(&AST)) \
       return This->Visit ## I(*Casted);
-    #include "acse/Parse/AbstractSyntaxTreeNode.def"
+    #include "acse/IR/AbstractSyntaxTreeNode.def"
     #undef AST
 
     llvm_unreachable("Unknown AST node type");
@@ -212,4 +212,4 @@ private:
 
 } // End namespace acse.
 
-#endif // ACSE_PARSE_ABSTRACTSYNTAXTREEVISITOR_H
+#endif // ACSE_IR_ABSTRACTSYNTAXTREEVISITOR_H
