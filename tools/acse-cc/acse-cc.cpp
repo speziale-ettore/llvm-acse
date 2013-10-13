@@ -75,5 +75,5 @@ int main(int argc, char *argv[]) {
 
   Output->keep();
 
-  return  EXIT_SUCCESS;
+  return EXIT_SUCCESS;
 }

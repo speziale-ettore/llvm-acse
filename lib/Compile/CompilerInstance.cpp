@@ -8,7 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "acse/Compile/CompilerInstance.h"
-#include "acse/Compile/Pass.h"
+#include "acse/Compile/SymbolsChecker.h"
 #include "acse/IR/AbstractSyntaxTreeVisitor.h"
 #include "acse/Parse/Parser.h"
 
@@ -39,7 +39,7 @@ public:
     if(SyntaxOnly)
       return;
 
-    // TODO: add semantic check passes.
+    Stages.push_back(new SymbolsChecker());
     // TODO: add pass to LLVM-IR.
 
     if(EmitIR)
@@ -54,7 +54,14 @@ private:
 
 public:
   bool Run(llvm::raw_ostream &OS) {
+    typedef llvm::SmallVector<Pass *, 4>::const_iterator iterator;
+
     bool ErrorsFound = false;
+
+    for(iterator I = Stages.begin(), E = Stages.end();
+        I != E && !ErrorsFound;
+        ++I)
+      ErrorsFound = (*I)->Run(*AST);
 
     return ErrorsFound;
   }

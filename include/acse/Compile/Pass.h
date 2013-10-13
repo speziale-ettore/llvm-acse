@@ -7,13 +7,16 @@
 //
 //===----------------------------------------------------------------------===//
 
+#ifndef ACSE_COMPILE_PASS_H
+#define ACSE_COMPILE_PASS_H
+
 #include "acse/IR/AbstractSyntaxTree.h"
 
 namespace acse {
 
 class Pass {
 protected:
-  Pass();
+  Pass() { }
 
 private:
   Pass(const Pass &That) LLVM_DELETED_FUNCTION;
@@ -24,3 +27,5 @@ public:
 };
 
 } // End namespace acse.
+
+#endif // ACSE_COMPILE_PASS_H

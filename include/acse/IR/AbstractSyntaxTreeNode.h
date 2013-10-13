@@ -16,6 +16,7 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/PostOrderIterator.h"
 #include "llvm/Support/Casting.h"
+#include "llvm/Support/ErrorHandling.h"
 
 namespace acse {
 
@@ -638,6 +639,7 @@ TOKEN_AST(Write)
 class NumberAST : public TokenAST {
 public:
   typedef NumberTok Token;
+  typedef NumberTok::NumberTy NumberTy;
 
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
@@ -646,6 +648,12 @@ public:
 
 public:
   NumberAST(NumberTok *Tok) : TokenAST(Number, Tok) { }
+
+public:
+  NumberTy GetValue() const {
+    const NumberTok *Tok = llvm::cast<NumberTok>(Data[0].Tok);
+    return Tok->Value();
+  }
 };
 
 class IdentifierAST : public TokenAST {
@@ -659,6 +667,16 @@ public:
 
 public:
   IdentifierAST(IdentifierTok *Tok) : TokenAST(Identifier, Tok) { }
+
+public:
+  const IdentifierTok *GetToken() const {
+    return llvm::cast<IdentifierTok>(Data[0].Tok);
+  }
+
+  llvm::StringRef GetName() const {
+    const IdentifierTok *Tok = GetToken();
+    return Tok->GetSpelling();
+  }
 };
 
 //
@@ -1097,6 +1115,9 @@ public:
 //   | initializer
 class InitializerListAST : public AbstractSyntaxTreeNode {
 public:
+  typedef NumberAST::NumberTy SizeTy;
+
+public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == InitializerList;
   }
@@ -1107,6 +1128,28 @@ public:
                      InitializerListAST *InitList = 0)
     : AbstractSyntaxTreeNode(InitializerList, Init, Comma, InitList) {
     assert((Comma && InitList || !Comma && !InitList) && "Missing elements");
+  }
+
+public:
+  const InitializerAST *GetInitializer() const {
+    return llvm::cast<InitializerAST>(Data[0].AST);
+  }
+
+  const InitializerListAST *GetInitializerList() const {
+    return Data.size() == 3 ? llvm::cast<InitializerListAST>(Data[2].AST) : 0;
+  }
+
+  SizeTy GetInitializerSize() const {
+    SizeTy Size = 0;
+
+    // TODO: extends the AST visitors and use them to compute the size of the
+    // initializer list.
+    for(const InitializerListAST *List = this;
+                                  List;
+                                  List = List->GetInitializerList())
+      ++Size;
+
+    return Size;
   }
 };
 
@@ -1127,6 +1170,9 @@ public:
 //   : *LBrace* initializer_list *RBrace*
 class ArrayInitializerAST : public AbstractSyntaxTreeNode {
 public:
+  typedef InitializerListAST::SizeTy SizeTy;
+
+public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == ArrayInitializer;
   }
@@ -1136,6 +1182,14 @@ public:
                       InitializerListAST *List,
                       RBraceAST *Closed)
     : AbstractSyntaxTreeNode(ArrayInitializer, Open, List, Closed) { }
+
+public:
+  SizeTy GetInitializerSize() const {
+    const InitializerListAST *List;
+    List = llvm::cast<InitializerListAST>(Data[1].AST);
+
+    return List->GetInitializerSize();
+  }
 };
 
 // type
@@ -1155,6 +1209,9 @@ public:
 //   | *Identifier* *LSquare* *Number* *RSquare* *Assign* initializer_list
 //   | *Identifier* *LSquare* *RSquare* *Assign* initializer_list
 class ArrayDeclarationAST : public AbstractSyntaxTreeNode {
+public:
+  typedef NumberAST::NumberTy ArraySizeTy;
+
 public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == ArrayDeclaration;
@@ -1196,6 +1253,50 @@ public:
                              RSquare,
                              Assign,
                              Init) { }
+
+public:
+  const IdentifierAST *GetIdentifier() const {
+    return llvm::cast<IdentifierAST>(Data[0].AST);
+  }
+
+  ArraySizeTy GetArraySize() const {
+    if(const NumberAST *Size = llvm::dyn_cast<NumberAST>(Data[3].AST))
+      return Size->GetValue();
+
+    else if(const ArrayInitializerAST *Initializer = GetInitializer())
+      return Initializer->GetInitializerSize();
+
+    else
+      llvm_unreachable("Corrupted array declaration AST");
+  }
+
+  const ArrayInitializerAST *GetInitializer() const {
+    const ArrayInitializerAST *Initializer;
+
+    switch(Data.size()) {
+      case 5:
+        Initializer = llvm::cast<ArrayInitializerAST>(Data[4].AST);
+        break;
+
+      case 6:
+        Initializer = llvm::cast<ArrayInitializerAST>(Data[5].AST);
+        break;
+
+      default:
+        Initializer = 0;
+    }
+
+    return Initializer;
+  }
+
+  bool HasInitializer() const {
+    return Data.size() >= 5;
+  }
+
+  llvm::StringRef GetArrayName() const {
+    const IdentifierAST *Id = GetIdentifier();
+    return Id->GetName();
+  }
 };
 
 // scalar_declaration
@@ -1215,6 +1316,24 @@ public:
                        AssignAST *Assign,
                        ScalarInitializerAST *Init)
     : AbstractSyntaxTreeNode(ScalarDeclaration, Id, Assign, Init) { }
+
+public:
+  const IdentifierAST *GetIdentifier() const {
+    return llvm::cast<IdentifierAST>(Data[0].AST);
+  }
+
+  const ScalarInitializerAST *GetInitializer() const {
+    return HasInitializer() ? llvm::cast<ScalarInitializerAST>(Data[2].AST) : 0;
+  }
+
+  bool HasInitializer() const {
+    return Data.size() == 3;
+  }
+
+  llvm::StringRef GetScalarName() const {
+    const IdentifierAST *Id = GetIdentifier();
+    return Id->GetName();
+  }
 };
 
 // declaration
