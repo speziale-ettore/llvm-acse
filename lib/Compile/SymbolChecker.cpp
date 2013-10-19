@@ -35,7 +35,6 @@ public:
     return !ErrorsFound;
   }
 
-  // TODO: comment.
   NextAction VisitScalarDeclaration(const ScalarDeclarationAST &Decl) {
     if(!Symbols.insert(Decl.GetScalarName())) {
       // TODO: report error.
