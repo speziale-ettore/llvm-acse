@@ -90,12 +90,6 @@ private:
 // have a set of sub-trees to visit. Indeed, AbstractSyntaxTree acts like a
 // proxy, hence the real graph is the node AbstractSyntaxTree identifies as the
 // root.
-//
-// Moreover, since it is an entry point, it is useful iterating over all nodes
-// in the AST. Please notice that this feature is not supported in
-// AbstractSyntaxTreeNode, basically because when you are dealing with an
-// internal node you are usually interested on its immediate successors, not on
-// all its successors.
 namespace llvm {
 
 using namespace acse;

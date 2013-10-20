@@ -1139,18 +1139,11 @@ public:
     return Data.size() == 3 ? llvm::cast<InitializerListAST>(Data[2].AST) : 0;
   }
 
-  SizeTy GetInitializerSize() const {
-    SizeTy Size = 0;
-
-    // TODO: extends the AST visitors and use them to compute the size of the
-    // initializer list.
-    for(const InitializerListAST *List = this;
-                                  List;
-                                  List = List->GetInitializerList())
-      ++Size;
-
-    return Size;
+  bool HasInitializerList() const {
+    return Data.size() != 1;
   }
+
+  SizeTy GetInitializerSize() const;
 };
 
 // scalar_initializer

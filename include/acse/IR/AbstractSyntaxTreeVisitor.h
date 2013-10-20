@@ -19,7 +19,7 @@ namespace acse {
 template <typename DerivedTy>
 class PreOrderAbstractSyntaxTreeVisitor {
 public:
-  typedef llvm::df_iterator<const AbstractSyntaxTree *> DepthFirstIterator;
+  typedef llvm::df_iterator<const AbstractSyntaxTreeNode *> DepthFirstIterator;
 
   enum NextAction {
     Continue,
@@ -163,11 +163,16 @@ public:
     return iterator::end(I);
   }
 
-public:
+protected:
   PreOrderAbstractSyntaxTreeVisitor(const AbstractSyntaxTree &AST)
-    : AST(AST),
-      I(llvm::df_begin(&AST)),
-      E(llvm::df_end(&AST)) { }
+    : Root(AST.GetRoot()),
+      I(llvm::df_begin(Root)),
+      E(llvm::df_end(Root)) { }
+
+  PreOrderAbstractSyntaxTreeVisitor(const AbstractSyntaxTreeNode &AST)
+    : Root(&AST),
+      I(llvm::df_begin(Root)),
+      E(llvm::df_end(Root)) { }
 
 public:
   void Visit() {
@@ -204,7 +209,7 @@ private:
   }
 
 private:
-  const AbstractSyntaxTree &AST;
+  const AbstractSyntaxTreeNode *Root;
 
   DepthFirstIterator I;
   DepthFirstIterator E;
