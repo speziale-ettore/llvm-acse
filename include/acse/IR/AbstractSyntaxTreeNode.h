@@ -1253,7 +1253,7 @@ public:
   }
 
   ArraySizeTy GetArraySize() const {
-    if(const NumberAST *Size = llvm::dyn_cast<NumberAST>(Data[3].AST))
+    if(const NumberAST *Size = llvm::dyn_cast<NumberAST>(Data[2].AST))
       return Size->GetValue();
 
     else if(const ArrayInitializerAST *Initializer = GetInitializer())

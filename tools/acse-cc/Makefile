@@ -4,7 +4,7 @@ LEVEL = ../..
 
 TOOLNAME = acse-cc
 
-LINK_COMPONENTS = support
-USEDLIBS = acseCompile.a acseParse.a acseLex.a
+LINK_COMPONENTS = support core
+USEDLIBS = acseCompile.a acseParse.a acseIR.a acseLex.a
 
 include $(LEVEL)/Makefile.common

@@ -8,6 +8,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "acse/Compile/CompilerInstance.h"
+#include "acse/Compile/IRTranslator.h"
 #include "acse/Compile/SymbolsChecker.h"
 #include "acse/IR/AbstractSyntaxTreeVisitor.h"
 #include "acse/Parse/Parser.h"
@@ -24,28 +25,22 @@ SyntaxOnly("fsyntax-only",
            llvm::cl::init(false));
 
 llvm::cl::opt<bool>
-EmitIR("emit-ir",
-       llvm::cl::desc("Emit LLVM IR bytecode"),
-       llvm::cl::init(false));
-
-llvm::cl::opt<bool>
 EmitAssembly("S",
-             llvm::cl::desc("Emit target assembly"),
+             llvm::cl::desc("Emit readable assembly"),
              llvm::cl::init(false));
 
 class Pipeline {
 public:
-  Pipeline(AbstractSyntaxTree *AST) : AST(AST) {
+  Pipeline(AbstractSyntaxTree *AST) : AST(AST), Module(0) {
     if(SyntaxOnly)
       return;
 
     Stages.push_back(new SymbolsChecker());
-    // TODO: add pass to LLVM-IR.
+    Stages.push_back(new IRTranslator(Module));
+  }
 
-    if(EmitIR)
-      return;
-
-    // TODO: add machine code pass.
+  ~Pipeline() {
+    delete Module;
   }
 
 private:
@@ -61,13 +56,19 @@ public:
     for(iterator I = Stages.begin(), E = Stages.end();
         I != E && !ErrorsFound;
         ++I)
-      ErrorsFound = (*I)->Run(*AST);
+      ErrorsFound = !(*I)->Run(*AST);
 
-    return ErrorsFound;
+    return !ErrorsFound;
+  }
+
+  llvm::Module &GetModule() {
+    return *Module;
   }
 
 private:
   AbstractSyntaxTree *AST;
+  llvm::Module *Module;
+
   llvm::SmallVector<Pass *, 4> Stages;
 };
 
@@ -79,10 +80,19 @@ bool CompilerInstance::Run() {
   Parser Parse(Lex);
   ErrorsFound = !Parse.Run();
 
-  if(!ErrorsFound) {
-    Pipeline Pipe(Parse.TakeAST());
-    ErrorsFound = !Pipe.Run(Dst);
-  }
+  if(ErrorsFound)
+    return false;
 
-  return !ErrorsFound;
+  Pipeline Pipe(Parse.TakeAST());
+  ErrorsFound = !Pipe.Run(Dst);
+
+  if(ErrorsFound)
+    return false;
+
+  if(EmitAssembly)
+    Dst << Pipe.GetModule();
+  else
+    llvm_unreachable("Not yet implemented");
+
+  return true;
 }
