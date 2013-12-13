@@ -1102,12 +1102,21 @@ public:
 //   : *Number*
 class InitializerAST : public AbstractSyntaxTreeNode {
 public:
+  typedef NumberAST::NumberTy InitializerTy;
+
+public:
   static inline bool classof(const AbstractSyntaxTreeNode *AST) {
     return AST->GetId() == Initializer;
   }
 
 public:
   InitializerAST(NumberAST *N) : AbstractSyntaxTreeNode(Initializer, N) { }
+
+public:
+  InitializerTy GetValue() const {
+    const NumberAST *Num = llvm::cast<NumberAST>(Data[0].AST);
+    return Num->GetValue();
+  }
 };
 
 // initializer_list

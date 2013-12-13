@@ -10,6 +10,7 @@
 #include "acse/Compile/IRTranslator.h"
 #include "acse/IR/AbstractSyntaxTreeVisitor.h"
 
+#include "llvm/IR/Constants.h"
 #include "llvm/IR/DerivedTypes.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Type.h"
@@ -18,6 +19,59 @@ using namespace acse;
 
 namespace {
 
+// TODO: note about the order in which the classes are declared here.
+
+// TODO: comment.
+class InitializerBuilder
+  : public PostOrderAbstractSyntaxTreeVisitor<InitializerBuilder>
+{
+public:
+  InitializerBuilder(const ScalarInitializerAST &AST)
+    : PostOrderAbstractSyntaxTreeVisitor<InitializerBuilder>(AST),
+      Ctx(llvm::getGlobalContext()) { }
+
+  InitializerBuilder(const ArrayInitializerAST &AST)
+    : PostOrderAbstractSyntaxTreeVisitor<InitializerBuilder>(AST),
+      Ctx(llvm::getGlobalContext()) { }
+
+public:
+  llvm::Constant *BuildConstant(llvm::Type *Ty) {
+    llvm::Constant *Const;
+
+    // Run the visitor to build the constant bottom up.
+    Visit();
+
+    // The type of the constant is integer. That means it is a scalar value.
+    if(llvm::isa<llvm::IntegerType>(Ty)) {
+      Const = Inits.front();
+
+    // The type of the constant is an array.
+    } else if(llvm::ArrayType *ArrayTy = llvm::cast<llvm::ArrayType>(Ty)) {
+      Const = llvm::ConstantArray::get(ArrayTy, Inits);
+
+    // Unknown constant type.
+    } else {
+      llvm_unreachable("Unknown type");
+    }
+
+    return Const;
+  }
+
+public:
+  NextAction VisitInitializer(const InitializerAST &Init) {
+    llvm::IntegerType *Ty = llvm::Type::getInt32Ty(Ctx);
+
+    Inits.push_back(llvm::ConstantInt::get(Ty, Init.GetValue()));
+
+    return Continue;
+  }
+
+private:
+  llvm::LLVMContext &Ctx;
+  llvm::SmallVector<llvm::Constant *, 4> Inits;
+};
+
+// TODO: comment.
 class AbstractSyntaxTreeTranslator
   : public PreOrderAbstractSyntaxTreeVisitor<AbstractSyntaxTreeTranslator> {
 public:
@@ -64,18 +118,50 @@ public:
 
   NextAction VisitScalarDeclaration(const ScalarDeclarationAST &Decl) {
     llvm::Type *Ty = DeclTy;
+    llvm::Constant *Var;
 
-    (*Module)->getOrInsertGlobal(Decl.GetScalarName(), Ty);
+    Var = (*Module)->getOrInsertGlobal(Decl.GetScalarName(), Ty);
+
+    if(const ScalarInitializerAST *Init = Decl.GetInitializer()) {
+      InitializerBuilder Builder(*Init);
+
+      llvm::Constant *Constant = Builder.BuildConstant(Ty);
+      llvm::GlobalVariable *InitVar = llvm::cast<llvm::GlobalVariable>(Var);
+
+      InitVar->setInitializer(Constant);
+    }
 
     return Continue;
   }
 
   NextAction VisitArrayDeclaration(const ArrayDeclarationAST &Decl) {
     llvm::Type *Ty = llvm::ArrayType::get(DeclTy, Decl.GetArraySize());
+    llvm::Constant *Var;
 
-    (*Module)->getOrInsertGlobal(Decl.GetArrayName(), Ty);
+    Var = (*Module)->getOrInsertGlobal(Decl.GetArrayName(), Ty);
+
+    if(const ArrayInitializerAST *Init = Decl.GetInitializer()) {
+      InitializerBuilder Builder(*Init);
+
+      llvm::Constant *Constant = Builder.BuildConstant(Ty);
+      llvm::GlobalVariable *InitVar = llvm::cast<llvm::GlobalVariable>(Var);
+
+      InitVar->setInitializer(Constant);
+    }
 
     return Continue;
+  }
+
+  // Do not visit the initializer here -- it has already been visited by a
+  // post-order visitor in order to build the constant.
+  NextAction VisitScalarInitializer(const ScalarInitializerAST &Init) {
+    return SkipChildren;
+  }
+
+  // Do not visit the initializer here -- it has already been visited by a
+  // post-order visitor in order to build the constant.
+  NextAction VisitArrayInitializer(const ArrayInitializerAST &Init) {
+    return SkipChildren;
   }
 
 private:

@@ -215,6 +215,62 @@ private:
   DepthFirstIterator E;
 };
 
+template <typename DerivedTy>
+class PostOrderAbstractSyntaxTreeVisitor {
+public:
+  typedef llvm::po_iterator<const AbstractSyntaxTreeNode *> DepthFirstIterator;
+
+  enum NextAction {
+    Continue,
+    Terminate
+  };
+
+protected:
+  PostOrderAbstractSyntaxTreeVisitor(const AbstractSyntaxTree &AST)
+    : Root(AST.GetRoot()),
+    I(llvm::po_begin(Root)),
+    E(llvm::po_end(Root)) { }
+
+  PostOrderAbstractSyntaxTreeVisitor(const AbstractSyntaxTreeNode &AST)
+    : Root(&AST),
+    I(llvm::po_begin(Root)),
+    E(llvm::po_end(Root)) { }
+
+public:
+  void Visit() {
+    NextAction Next = Continue;
+
+    for(; I != E && Next != Terminate; ++I)
+      Next = Dispatch(**I);
+  }
+
+  #define AST(I)                               \
+  NextAction Visit ## I(const I ## AST &AST) { \
+    return Continue;                           \
+  }
+  #include "acse/IR/AbstractSyntaxTreeNode.def"
+  #undef AST
+
+private:
+  NextAction Dispatch(const AbstractSyntaxTreeNode &AST) {
+    DerivedTy *This = static_cast<DerivedTy *>(this);
+
+    #define AST(I)                                              \
+    if(const I ## AST *Casted = llvm::dyn_cast<I ## AST>(&AST)) \
+      return This->Visit ## I(*Casted);
+    #include "acse/IR/AbstractSyntaxTreeNode.def"
+    #undef AST
+
+    llvm_unreachable("Unknown AST node type");
+  }
+
+private:
+  const AbstractSyntaxTreeNode *Root;
+
+  DepthFirstIterator I;
+  DepthFirstIterator E;
+};
+
 } // End namespace acse.
 
 #endif // ACSE_IR_ABSTRACTSYNTAXTREEVISITOR_H
